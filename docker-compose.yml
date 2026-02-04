@@ -1,0 +1,248 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # MQTT BROKER - Corazón del sistema
+  # ============================================================================
+  mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: vr-assistant-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqtt_data:/mosquitto/data
+      - mqtt_logs:/mosquitto/log
+    networks:
+      - vr-network
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "$SYS/#", "-C", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # AUDIO SERVICE - STT/TTS
+  # ============================================================================
+  audio_service:
+    build:
+      context: ./services/audio
+      dockerfile: Dockerfile
+    container_name: vr-assistant-audio
+    ports:
+      - "8001:8001"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # VISION SERVICE - Reconocimiento facial
+  # ============================================================================
+  vision_service:
+    build:
+      context: ./services/vision
+      dockerfile: Dockerfile
+    container_name: vr-assistant-vision
+    ports:
+      - "8002:8002"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # FILTER SERVICE - TinyLlama 1.1B
+  # ============================================================================
+  filter_service:
+    build:
+      context: ./services/filter
+      dockerfile: Dockerfile
+    container_name: vr-assistant-filter
+    ports:
+      - "8003:8003"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # REASONING SERVICE - Phi-3 + HMR-ACT
+  # ============================================================================
+  reasoning_service:
+    build:
+      context: ./services/reasoning
+      dockerfile: Dockerfile
+    container_name: vr-assistant-reasoning
+    ports:
+      - "8004:8004"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # RAG SERVICE - ChromaDB
+  # ============================================================================
+  rag_service:
+    build:
+      context: ./services/rag
+      dockerfile: Dockerfile
+    container_name: vr-assistant-rag
+    ports:
+      - "8005:8005"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/rag_db:/app/rag_db
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # HARDWARE SERVICE - Control de dispositivos
+  # ============================================================================
+  hardware_service:
+    build:
+      context: ./services/hardware
+      dockerfile: Dockerfile
+    container_name: vr-assistant-hardware
+    ports:
+      - "8006:8006"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0  # Puerto serial
+    privileged: true
+    restart: unless-stopped
+
+  # ============================================================================
+  # LEARNING SERVICE - Motor de aprendizaje
+  # ============================================================================
+  learning_service:
+    build:
+      context: ./services/learning
+      dockerfile: Dockerfile
+    container_name: vr-assistant-learning
+    ports:
+      - "8007:8007"
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - LOG_LEVEL=INFO
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./data/learning_db:/app/learning_db
+      - ./data/logs:/app/logs
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # PROMETHEUS - Monitoreo
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vr-assistant-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # GRAFANA - Visualización
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vr-assistant-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - vr-network
+    restart: unless-stopped
+
+# ============================================================================
+# VOLÚMENES
+# ============================================================================
+volumes:
+  mqtt_data:
+  mqtt_logs:
+  prometheus_data:
+  grafana_data:
+
+# ============================================================================
+# REDES
+# ============================================================================
+networks:
+  vr-network:
+    driver: bridge
