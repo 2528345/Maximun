@@ -1,0 +1,59 @@
+# ============================================
+# MAXIMUN - Reglas HMR-ACT (INMUTABLES)
+# ============================================
+hmr_act:
+  version: "2.0"
+  immutable: true
+
+  # Arquitectura de flujo
+  pipeline:
+    - percepcion      # Entrada sensorial (audio, visión, texto)
+    - filtrado        # Validación y sanitización
+    - razonamiento    # Procesamiento HMR-ACT
+    - planificacion   # Generación de plan de acción
+    - ejecucion       # Comandos a hardware/servicios
+
+  # Topics MQTT (orden estricto)
+  topics:
+    input: "reasoning/input"
+    hmr_act: "reasoning/hmr_act/output"
+    final: "reasoning/final/output"
+    hardware: "hardware/commands"
+
+  # Reglas de razonamiento
+  reasoning_rules:
+    - name: "Preservación del sistema"
+      priority: 1
+      condition: "self_preservation == True"
+      action: "abort_if_dangerous"
+    - name: "Feedback positivo"
+      priority: 2
+      condition: "user_feedback > 0"
+      action: "reinforce_policy"
+    - name: "Feedback negativo"
+      priority: 2
+      condition: "user_feedback < 0"
+      action: "adjust_policy"
+
+  # Filtros de entrada
+  filters:
+    - type: "adversarial"
+      blacklist: ["DAN", "ignore previous", "jailbreak", "override"]
+    - type: "injection"
+      patterns: ["system:", "assistant:", "base64", "rot13"]
+    - type: "length"
+      max_input: 8000
+      max_output: 4000
+
+  # Auto-preservación
+  self_preservation:
+    enabled: true
+    kill_switch: "/opt/maximun/scripts/emergency_kill.sh"
+    audit_interval: 86400  # 24h en segundos
+
+  # Auto-aprendizaje
+  auto_learning:
+    enabled: true
+    min_feedback: 100
+    reward_threshold: 0.65
+    policy_update_interval: 604800  # 7 días en segundos
