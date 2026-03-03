@@ -168,6 +168,7 @@ Para dejarlo automático al iniciar sesión:
 
 - [Runbook openSUSE MicroOS](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
 - [Hoja de ruta completa instalación/despliegue](/root/codex/docs/INSTALL_DEPLOY_ROADMAP_V5.1.md)
+- [Guia completa para novatos (paso a paso)](/root/codex/docs/GUIA_DESPLIEGUE_NOVATOS_ES.md)
 - [Flujo por módulo](/root/codex/docs/FLOW_BY_MODULE.md)
 - [Checklist MVP producción](/root/codex/docs/MVP_PRODUCTION_CHECKLIST_ES.md)
 
