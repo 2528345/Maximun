@@ -48,6 +48,7 @@ Stack de asistente personal **offline-first** para openSUSE MicroOS en Lenovo 33
 - TLS opcional en puerto `8883`:
   - `MQTT_TLS_ENABLE=true`
   - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
+  - CA para clientes internos: `MQTT_TLS_CA_CERT=/certs/mqtt/ca.crt`
 
 Generar certificados locales:
 

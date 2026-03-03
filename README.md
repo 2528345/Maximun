@@ -54,6 +54,7 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
 - Optional TLS listener (`8883`) can be enabled with:
   - `MQTT_TLS_ENABLE=true`
   - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
+  - client CA inside services: `MQTT_TLS_CA_CERT=/certs/mqtt/ca.crt`
 
 Generate self-signed certs for local testing:
 

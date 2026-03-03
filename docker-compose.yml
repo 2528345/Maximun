@@ -87,6 +87,7 @@ services:
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/projects:/output:rw
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/rag_store:/rag_store:rw
       - ./config/signatures:/opt/maximun/config/signatures:rw
+      - ./gateway-mqtt/certs:/certs/mqtt:ro
       - shared_logs:/logs
     mem_limit: 6500m
     cpus: "3.50"
@@ -125,6 +126,7 @@ services:
       CAMERA_INDEX: "${CAMERA_INDEX:-0}"
     volumes:
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/models_cache:/models_cache:ro
+      - ./gateway-mqtt/certs:/certs/mqtt:ro
       - shared_logs:/logs
     devices:
       - /dev/video0:/dev/video0
@@ -165,6 +167,7 @@ services:
       ENABLE_STT_SIMULATOR: "${ENABLE_STT_SIMULATOR:-false}"
     volumes:
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/models_cache:/models_cache:ro
+      - ./gateway-mqtt/certs:/certs/mqtt:ro
       - shared_logs:/logs
     devices:
       - /dev/snd:/dev/snd
@@ -207,6 +210,7 @@ services:
       IOT_CAN_INTERFACE: "${IOT_CAN_INTERFACE:-socketcan}"
     volumes:
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/projects:/output:rw
+      - ./gateway-mqtt/certs:/certs/mqtt:ro
       - shared_logs:/logs
     mem_limit: 220m
     cpus: "0.35"
@@ -247,6 +251,7 @@ services:
       RAG_ENABLE_WEB_SCRAPING: "${RAG_ENABLE_WEB_SCRAPING:-false}"
     volumes:
       - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/rag_store:/rag_store:rw
+      - ./gateway-mqtt/certs:/certs/mqtt:ro
       - shared_logs:/logs
     shm_size: "256m"
     mem_limit: 700m
