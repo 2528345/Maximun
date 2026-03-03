@@ -136,6 +136,38 @@ services:
     mem_limit: 600m
     cpus: "0.50"
 
+  iot-gateway:
+    build:
+      context: ./services/iot-gateway
+    container_name: iot-gateway
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+      - cognitive-core
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      ENABLE_IOT: "${ENABLE_IOT:-false}"
+      IOT_SIMULATION: "${IOT_SIMULATION:-true}"
+      IOT_ENABLE_BLUETOOTH: "${IOT_ENABLE_BLUETOOTH:-true}"
+      IOT_ENABLE_ZIGBEE: "${IOT_ENABLE_ZIGBEE:-true}"
+      IOT_ENABLE_INDUSTRIAL: "${IOT_ENABLE_INDUSTRIAL:-true}"
+      IOT_STATUS_INTERVAL_SEC: "${IOT_STATUS_INTERVAL_SEC:-25}"
+      IOT_BLUETOOTH_TIMEOUT_SEC: "${IOT_BLUETOOTH_TIMEOUT_SEC:-6.0}"
+      IOT_ZIGBEE_SERIAL_PORT: "${IOT_ZIGBEE_SERIAL_PORT:-/dev/ttyUSB1}"
+      IOT_ZIGBEE_BAUDRATE: "${IOT_ZIGBEE_BAUDRATE:-115200}"
+      IOT_MODBUS_SERIAL_PORT: "${IOT_MODBUS_SERIAL_PORT:-/dev/ttyUSB2}"
+      IOT_MODBUS_BAUDRATE: "${IOT_MODBUS_BAUDRATE:-9600}"
+      IOT_OPCUA_ENDPOINT: "${IOT_OPCUA_ENDPOINT:-opc.tcp://127.0.0.1:4840}"
+      IOT_OPCUA_DEFAULT_NODE: "${IOT_OPCUA_DEFAULT_NODE:-ns=2;i=2}"
+      IOT_CAN_CHANNEL: "${IOT_CAN_CHANNEL:-can0}"
+      IOT_CAN_INTERFACE: "${IOT_CAN_INTERFACE:-socketcan}"
+    volumes:
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/projects:/output:rw
+      - shared_logs:/logs
+    mem_limit: 220m
+    cpus: "0.35"
+
   rag-core:
     build:
       context: ./services/rag-core

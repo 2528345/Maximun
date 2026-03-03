@@ -61,6 +61,7 @@ file_must_exist "services/audio-interface/app/main.py"
 file_must_exist "services/vision-cortex/app/main.py"
 file_must_exist "services/rag-core/app/main.py"
 file_must_exist "services/rag-core/app/self_protection.py"
+file_must_exist "services/iot-gateway/app/main.py"
 file_must_exist "ops/preflight_host_check.sh"
 file_must_exist "ops/storage_tier_setup.sh"
 file_must_exist "ops/test_by_module.sh"
@@ -69,7 +70,7 @@ file_must_exist "config/runtime_profiles/lenovo330s_engineering.env"
 
 echo
 echo "== Servicios esperados =="
-for svc in gateway-mqtt cognitive-core audio-interface vision-cortex rag-core dashboard; do
+for svc in gateway-mqtt cognitive-core audio-interface vision-cortex rag-core iot-gateway dashboard; do
   if awk -v svc="$svc" '
     $1 == "services:" {in_services=1; next}
     in_services && $1 == svc ":" {found=1}
@@ -101,6 +102,13 @@ topic_expectations=(
   "cognition/rag/feedback:services/rag-core/app/main.py:consume"
   "cognition/rag/ingest_path:services/rag-core/app/main.py:consume"
   "RAG_QUERY_CACHE_TTL_SEC:services/rag-core/app/main.py:ram_cache_ttl"
+  "iot/bluetooth/scan/request:services/iot-gateway/app/main.py:consume"
+  "iot/zigbee/scan/request:services/iot-gateway/app/main.py:consume"
+  "iot/industrial/request:services/iot-gateway/app/main.py:consume"
+  "perception/iot/bluetooth/devices:services/iot-gateway/app/main.py:publish"
+  "perception/iot/zigbee/devices:services/iot-gateway/app/main.py:publish"
+  "perception/iot/industrial/data:services/iot-gateway/app/main.py:publish"
+  "system/resource/pause:services/iot-gateway/app/main.py:consume"
 )
 
 for item in "${topic_expectations[@]}"; do
@@ -124,9 +132,13 @@ core_total=$(( \
   $(service_mem_mb rag-core) \
 ))
 full_total=$(( core_total + $(service_mem_mb vision-cortex) + $(service_mem_mb dashboard) ))
+iot_total=$(( core_total + $(service_mem_mb iot-gateway) ))
+full_with_iot_total=$(( full_total + $(service_mem_mb iot-gateway) ))
 
 echo "core (gateway+cognitive+audio+rag): ${core_total}MB"
+echo "core+iot (+iot-gateway): ${iot_total}MB"
 echo "full (+vision+dashboard): ${full_total}MB"
+echo "full+iot (+vision+dashboard+iot): ${full_with_iot_total}MB"
 
 if (( core_total > 8192 )); then
   fatal "core supera 8GB; reduce limites o desactiva modulos"
@@ -138,6 +150,18 @@ if (( full_total > 8192 )); then
   ng "full supera 8GB en limites nominales; usa perfil estable o evita vision/dashboard en modo ingenieria"
 else
   ok "full dentro de 8GB"
+fi
+
+if (( iot_total > 8192 )); then
+  ng "core+iot supera 8GB; reduce limites o manten iot desactivado durante ingenieria"
+else
+  ok "core+iot dentro de 8GB"
+fi
+
+if (( full_with_iot_total > 8192 )); then
+  ng "full+iot supera 8GB; activa vision/iot solo por demanda"
+else
+  ok "full+iot dentro de 8GB"
 fi
 
 echo

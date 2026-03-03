@@ -11,6 +11,7 @@ Keep one coherent offline architecture for openSUSE MicroOS with strict resource
 - `services/audio-interface`: STT/TTS local
 - `services/vision-cortex`: reflex + deliberate vision
 - `services/rag-core`: local semantic memory with ChromaDB
+- `services/iot-gateway`: bridge local para Bluetooth/Zigbee/Modbus/OPC UA/CAN
 - `dashboard`: monitoring and manual controls
 
 ## Why this map is clean
@@ -30,6 +31,7 @@ Keep one coherent offline architecture for openSUSE MicroOS with strict resource
 - Compose: [docker-compose.yml](/root/codex/docker-compose.yml)
 - Flow: [docs/FLOW_BY_MODULE.md](/root/codex/docs/FLOW_BY_MODULE.md)
 - openSUSE runbook: [docs/OPENSUSE_MICROOS_RUNBOOK.md](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
+- Full install/deploy roadmap: [docs/INSTALL_DEPLOY_ROADMAP_V5.1.md](/root/codex/docs/INSTALL_DEPLOY_ROADMAP_V5.1.md)
 - Host preflight: [ops/preflight_host_check.sh](/root/codex/ops/preflight_host_check.sh)
 - Profile apply: [ops/apply_runtime_profile.sh](/root/codex/ops/apply_runtime_profile.sh)
 - Storage tier setup: [ops/storage_tier_setup.sh](/root/codex/ops/storage_tier_setup.sh)

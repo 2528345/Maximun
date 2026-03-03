@@ -55,11 +55,14 @@ fi
 
 enable_ui="${ENABLE_UI:-false}"
 enable_vision="${ENABLE_VISION:-false}"
+enable_iot="${ENABLE_IOT:-false}"
 if [[ -f .env ]]; then
   env_enable_ui="$(grep '^ENABLE_UI=' .env | tail -n1 | cut -d= -f2- || true)"
   env_enable_vision="$(grep '^ENABLE_VISION=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_enable_iot="$(grep '^ENABLE_IOT=' .env | tail -n1 | cut -d= -f2- || true)"
   [[ -n "$env_enable_ui" ]] && enable_ui="$env_enable_ui"
   [[ -n "$env_enable_vision" ]] && enable_vision="$env_enable_vision"
+  [[ -n "$env_enable_iot" ]] && enable_iot="$env_enable_iot"
 fi
 
 services=(gateway-mqtt rag-core cognitive-core audio-interface)
@@ -68,6 +71,9 @@ if [[ "${enable_ui,,}" == "true" ]]; then
 fi
 if [[ "${enable_vision,,}" == "true" ]]; then
   services+=(vision-cortex)
+fi
+if [[ "${enable_iot,,}" == "true" ]]; then
+  services+=(iot-gateway)
 fi
 
 echo "[INFO] Build y arranque"

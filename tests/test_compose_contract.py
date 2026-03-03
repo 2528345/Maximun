@@ -19,6 +19,7 @@ def test_expected_services_present() -> None:
         "audio-interface",
         "vision-cortex",
         "rag-core",
+        "iot-gateway",
         "dashboard",
     }
     assert expected.issubset(set(services.keys()))
@@ -39,6 +40,9 @@ def test_resource_limits_match_v51() -> None:
 
     assert s["gateway-mqtt"]["mem_limit"] == "100m"
     assert s["gateway-mqtt"]["cpus"] == "0.10"
+
+    assert s["iot-gateway"]["mem_limit"] == "220m"
+    assert s["iot-gateway"]["cpus"] == "0.35"
 
 
 def test_critical_mounts_exist() -> None:

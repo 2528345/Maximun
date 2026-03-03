@@ -9,6 +9,7 @@ Offline-first personal assistant stack for openSUSE MicroOS on Lenovo 330s (i5, 
 - `services/audio-interface`: Faster-Whisper STT + Piper TTS
 - `services/vision-cortex`: YOLOv8n ONNX reflex + Moondream2 deliberate analysis
 - `services/rag-core`: ChromaDB offline memory (RAG over local documents)
+- `services/iot-gateway`: bridge IoT for Bluetooth, Zigbee and industrial protocols (Modbus/OPC UA/CAN)
 - `services/rag-core/app/self_protection.py`: detector multicapa con cifrado (fallback) y contador homomórfico opcional (Paillier)
 - `dashboard`: real-time monitor/control UI with RLHF controls (`APROBAR/CORREGIR`, feedback, auditor override)
 
@@ -25,6 +26,7 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
 |   |-- cognitive-core/
 |   |-- audio-interface/
 |   |-- vision-cortex/
+|   |-- iot-gateway/
 |   `-- rag-core/
 |-- gateway-mqtt/
 |-- dashboard/
@@ -40,6 +42,7 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
 - `vision-cortex`: 800MB / 0.5 CPU
 - `audio-interface`: 600MB / 0.5 CPU
 - `rag-core`: 700MB / 0.5 CPU
+- `iot-gateway`: 220MB / 0.35 CPU (optional)
 - `gateway-mqtt`: 100MB / 0.1 CPU
 
 ## Host data layout
@@ -76,6 +79,7 @@ Dashboard: `http://localhost:5173`
 For openSUSE MicroOS host preparation, follow:
 
 - [docs/OPENSUSE_MICROOS_RUNBOOK.md](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
+- [docs/INSTALL_DEPLOY_ROADMAP_V5.1.md](/root/codex/docs/INSTALL_DEPLOY_ROADMAP_V5.1.md)
 
 ## Module tests
 
@@ -110,6 +114,7 @@ Optional modules are controlled by `.env`:
 
 - `ENABLE_UI=true` to include `dashboard`
 - `ENABLE_VISION=true` to include `vision-cortex`
+- `ENABLE_IOT=true` to include `iot-gateway`
 
 ## SSD + RAM tiering for RAG
 

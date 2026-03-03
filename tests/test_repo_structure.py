@@ -21,7 +21,11 @@ REQUIRED_FILES = [
     "services/vision-cortex/app/main.py",
     "services/rag-core/app/main.py",
     "services/rag-core/app/self_protection.py",
+    "services/iot-gateway/app/main.py",
+    "services/iot-gateway/requirements.txt",
+    "services/iot-gateway/Dockerfile",
     "gateway-mqtt/mosquitto.conf",
+    "docs/INSTALL_DEPLOY_ROADMAP_V5.1.md",
 ]
 
 

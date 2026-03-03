@@ -57,6 +57,7 @@ To enable optional modules edit `.env`:
 
 - `ENABLE_UI=true`
 - `ENABLE_VISION=true`
+- `ENABLE_IOT=true`
 
 For heavier coding sessions:
 
@@ -101,3 +102,9 @@ For heavier coding sessions:
 - GLM engineering passes are CPU-bound and can be slow.
 - Keep swap enabled on SSD.
 - Avoid running extra desktop-heavy workloads while engineering mode is active.
+
+## 9) Full roadmap
+
+For complete installation, deployment and IoT protocol flow (Bluetooth/Zigbee/Modbus/OPC UA/CAN):
+
+- [docs/INSTALL_DEPLOY_ROADMAP_V5.1.md](/root/codex/docs/INSTALL_DEPLOY_ROADMAP_V5.1.md)

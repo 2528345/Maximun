@@ -11,14 +11,15 @@ Runtime flow map by module.
 podman compose up -d
 ```
 
-## Modules (5 runtime + dashboard)
+## Modules (6 runtime + dashboard)
 
 1. `gateway-mqtt`
 2. `cognitive-core`
 3. `audio-interface`
 4. `vision-cortex`
 5. `rag-core`
-6. `dashboard` (UI)
+6. `iot-gateway`
+7. `dashboard` (UI)
 
 ## 1) Audio input
 
@@ -77,7 +78,24 @@ podman compose up -d
 - Errors:
   - `system/error`
 
-## 7) Debug commands
+## 7) IoT gateway
+
+- `iot-gateway` consume comandos de:
+  - `iot/gateway/command`
+  - `iot/bluetooth/scan/request`
+  - `iot/zigbee/scan/request`
+  - `iot/industrial/request`
+- Publica resultados en:
+  - `perception/iot/bluetooth/devices`
+  - `perception/iot/zigbee/devices`
+  - `perception/iot/industrial/data`
+  - `iot/gateway/response`
+- Health y estado:
+  - `system/iot/ready`
+  - `system/iot/status`
+- Si recibe `system/resource/pause`, reduce actividad de escaneo.
+
+## 8) Debug commands
 
 ```bash
 # Watch resource/error traffic
@@ -102,4 +120,10 @@ mosquitto_pub -h localhost -p 1883 -t cognition/rag/ingest_path -m '{"path":"/ra
 
 # Feedback for RL ranking
 mosquitto_pub -h localhost -p 1883 -t cognition/rag/feedback -m '{"interaction_id":"anonymous_1710000000_q1","feedback_type":"explicit","feedback_value":1.0}'
+
+# IoT BLE scan
+mosquitto_pub -h localhost -p 1883 -t iot/bluetooth/scan/request -m '{"request_id":"ble-1"}'
+
+# IoT industrial Modbus
+mosquitto_pub -h localhost -p 1883 -t iot/industrial/request -m '{"request_id":"mb-1","protocol":"modbus","register":100}'
 ```

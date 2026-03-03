@@ -48,7 +48,7 @@ service_running() {
 
 echo "== Test por modulo (V5.1) =="
 
-modules=(gateway-mqtt cognitive-core vision-cortex audio-interface rag-core maximun-dashboard)
+modules=(gateway-mqtt cognitive-core vision-cortex audio-interface rag-core iot-gateway maximun-dashboard)
 for m in "${modules[@]}"; do
   if service_running "$m"; then
     ok "contenedor activo: $m"
@@ -175,6 +175,31 @@ if service_running "maximun-dashboard"; then
   fi
 else
   ng "dashboard no activo (ENABLE_UI=false o contenedor caido)"
+fi
+
+# 7) iot-gateway readiness + command path
+if service_running "iot-gateway"; then
+  out9=$(mktemp)
+  out10=$(mktemp)
+  trap 'rm -f "$out1" "$out2" "$out3" "$out4" "$out5" "$out6" "$out7" "$out8" "$out9" "$out10"' EXIT
+
+  if mqtt_wait_topic "system/iot/ready" "$out9"; then
+    ok "iot-gateway emite system/iot/ready"
+  else
+    ng "iot-gateway no emitio system/iot/ready"
+  fi
+
+  (mqtt_wait_topic "iot/gateway/response" "$out10") &
+  sub_pid=$!
+  sleep 1
+  mqtt_pub "iot/bluetooth/scan/request" '{"request_id":"iot-test-1"}' || true
+  if wait "$sub_pid"; then
+    ok "iot-gateway procesa scan bluetooth y responde por iot/gateway/response"
+  else
+    ng "iot-gateway no respondio al scan bluetooth"
+  fi
+else
+  ng "iot-gateway no activo (ENABLE_IOT=false o contenedor caido)"
 fi
 
 echo

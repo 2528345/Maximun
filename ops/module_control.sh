@@ -12,6 +12,7 @@ Modulos validos:
   audio-interface
   vision-cortex
   rag-core
+  iot-gateway
   dashboard
   all
 USAGE
@@ -26,7 +27,7 @@ action="$1"
 module="$2"
 
 case "$module" in
-  gateway-mqtt|cognitive-core|audio-interface|vision-cortex|rag-core)
+  gateway-mqtt|cognitive-core|audio-interface|vision-cortex|rag-core|iot-gateway)
     svc="$module"
     ;;
   dashboard)
@@ -59,6 +60,9 @@ compose_up_module() {
       ;;
     rag-core)
       podman compose up -d gateway-mqtt rag-core
+      ;;
+    iot-gateway)
+      podman compose up -d gateway-mqtt cognitive-core iot-gateway
       ;;
     dashboard)
       podman compose up -d gateway-mqtt dashboard

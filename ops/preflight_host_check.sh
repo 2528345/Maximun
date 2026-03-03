@@ -12,9 +12,21 @@ RAG_ROOT="${DATA_ROOT}/rag_store"
 PROJECTS_ROOT="${DATA_ROOT}/projects"
 RAG_DOCS_ROOT="${RAG_ROOT}/docs"
 RAG_RAM_CACHE="/dev/shm/maximun_rag_cache"
+ENABLE_IOT="false"
+IOT_ZIGBEE_SERIAL_PORT="/dev/ttyUSB1"
+IOT_MODBUS_SERIAL_PORT="/dev/ttyUSB2"
+IOT_CAN_CHANNEL="can0"
 if [[ -f .env ]]; then
   env_ram_cache="$(grep '^RAG_RAM_CACHE_PATH=' .env | tail -n1 | cut -d= -f2- || true)"
   [[ -n "$env_ram_cache" ]] && RAG_RAM_CACHE="$env_ram_cache"
+  env_enable_iot="$(grep '^ENABLE_IOT=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_zigbee_port="$(grep '^IOT_ZIGBEE_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_modbus_port="$(grep '^IOT_MODBUS_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_can_channel="$(grep '^IOT_CAN_CHANNEL=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_enable_iot" ]] && ENABLE_IOT="$env_enable_iot"
+  [[ -n "$env_zigbee_port" ]] && IOT_ZIGBEE_SERIAL_PORT="$env_zigbee_port"
+  [[ -n "$env_modbus_port" ]] && IOT_MODBUS_SERIAL_PORT="$env_modbus_port"
+  [[ -n "$env_can_channel" ]] && IOT_CAN_CHANNEL="$env_can_channel"
 fi
 
 REQUIRED_MODELS=(
@@ -123,6 +135,32 @@ if [[ -e /dev/video0 ]]; then
   ok "/dev/video0 disponible"
 else
   fail "No existe /dev/video0"
+fi
+
+if [[ "${ENABLE_IOT,,}" == "true" ]]; then
+  if command -v bluetoothctl >/dev/null 2>&1; then
+    ok "bluetoothctl disponible para diagnostico BLE"
+  else
+    fail "bluetoothctl no esta instalado (necesario para BLE real)"
+  fi
+
+  if [[ -e "$IOT_ZIGBEE_SERIAL_PORT" ]]; then
+    ok "Puerto Zigbee disponible: $IOT_ZIGBEE_SERIAL_PORT"
+  else
+    fail "No existe puerto Zigbee configurado: $IOT_ZIGBEE_SERIAL_PORT"
+  fi
+
+  if [[ -e "$IOT_MODBUS_SERIAL_PORT" ]]; then
+    ok "Puerto Modbus disponible: $IOT_MODBUS_SERIAL_PORT"
+  else
+    fail "No existe puerto Modbus configurado: $IOT_MODBUS_SERIAL_PORT"
+  fi
+
+  if ip link show "$IOT_CAN_CHANNEL" >/dev/null 2>&1; then
+    ok "Canal CAN disponible: $IOT_CAN_CHANNEL"
+  else
+    fail "Canal CAN no encontrado: $IOT_CAN_CHANNEL"
+  fi
 fi
 
 if command -v lsblk >/dev/null 2>&1; then
