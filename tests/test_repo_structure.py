@@ -8,6 +8,8 @@ REQUIRED_FILES = [
     "ops/preflight_host_check.sh",
     "ops/check_system_consistency.sh",
     "ops/apply_runtime_profile.sh",
+    "ops/autocheck_modules.sh",
+    "ops/install_autocheck_service.sh",
     "ops/storage_tier_setup.sh",
     "ops/generate_model_checksums.sh",
     "ops/test_by_module.sh",

@@ -107,6 +107,21 @@ For openSUSE MicroOS host preparation, follow:
 ./ops/test_by_module.sh
 ```
 
+## Modular autocheck (self-healing)
+
+The autocheck reads `.env` (including MQTT credentials) and starts modules that are expected but down:
+
+```bash
+./ops/autocheck_modules.sh --once
+./ops/autocheck_modules.sh --daemon
+```
+
+Install as a user service:
+
+```bash
+./ops/install_autocheck_service.sh
+```
+
 ## Runtime profiles (8GB)
 
 ```bash

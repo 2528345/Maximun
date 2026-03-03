@@ -119,6 +119,24 @@ Módulos opcionales por `.env`:
 ./ops/test_by_module.sh
 ```
 
+## Autocheck modular (auto-levantado)
+
+Usa la config de tu `.env` (incluye usuario/clave MQTT) para verificar módulos y levantar los caídos:
+
+```bash
+# un ciclo
+./ops/autocheck_modules.sh --once
+
+# modo daemon (bucle)
+./ops/autocheck_modules.sh --daemon
+```
+
+Para dejarlo automático al iniciar sesión:
+
+```bash
+./ops/install_autocheck_service.sh
+```
+
 ## Documentación clave
 
 - [Runbook openSUSE MicroOS](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)

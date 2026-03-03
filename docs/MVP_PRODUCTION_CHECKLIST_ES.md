@@ -55,6 +55,7 @@ cp .env.example .env
 7. Pruebas de integración periódicas
 - Ejecutar `ops/test_by_module.sh` después de cada cambio.
 - Agregar test de “arranque limpio” con `.env` de producción.
+- Mantener activo `ops/autocheck_modules.sh --daemon` o su servicio systemd usuario.
 
 ## Criterio mínimo de salida a producción (MVP)
 
