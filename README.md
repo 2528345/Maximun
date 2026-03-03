@@ -107,10 +107,14 @@ If you have the project `.zip` on USB and want end-to-end deployment:
 
 # Stage 2: extract zip + apply profile + deploy stack
 ./ops/install_from_usb.sh --resume
+# (optional) provide explicit MQTT password:
+# ./ops/install_from_usb.sh --resume --mqtt-password 'YourLongStrongPassword_123456'
 ```
 
 By default it deploys to `/opt/maximun/Maximun_V5.1` using profile `lenovo330s_stable`.
 Override with `--target` and `--profile`.
+If default MQTT password is detected, the installer auto-generates a strong one and stores it in:
+`/opt/maximun/Maximun_V5.1/.mqtt_credentials.local`
 
 Dashboard: `http://localhost:5173`
 

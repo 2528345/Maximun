@@ -102,10 +102,14 @@ Si tienes el proyecto en un `.zip` dentro de una memoria USB:
 
 # Etapa 2: extrae zip + aplica perfil + despliega stack
 ./ops/install_from_usb.sh --resume
+# (opcional) fijar clave MQTT manual:
+# ./ops/install_from_usb.sh --resume --mqtt-password 'TuClaveLargaSegura_123456'
 ```
 
 Por defecto despliega en `/opt/maximun/Maximun_V5.1` con perfil `lenovo330s_stable`.
 Puedes cambiarlo con `--target` y `--profile`.
+Si detecta clave MQTT por defecto, genera una clave fuerte y la guarda en:
+`/opt/maximun/Maximun_V5.1/.mqtt_credentials.local`
 
 Dashboard (si `ENABLE_UI=true`): `http://localhost:5173`
 

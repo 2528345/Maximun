@@ -19,6 +19,8 @@ KEEP_STATE=false
 ZIP_SET=false
 TARGET_SET=false
 PROFILE_SET=false
+MQTT_PASSWORD_OVERRIDE=""
+MQTT_PASSWORD_SET=false
 STATE_ZIP_PATH=""
 STATE_TARGET_DIR=""
 STATE_PROFILE=""
@@ -40,6 +42,7 @@ Opciones:
   --state-file <path>    Archivo de estado entre etapas (default: /var/tmp/maximun_usb_install_state.env)
   --skip-bootstrap       Omite microos_bootstrap.sh en --prepare
   --skip-tests           Omite self_test.sh al final de --resume
+  --mqtt-password <val>  Clave MQTT para escribir en .env tras aplicar perfil
   --keep-state           No borra el archivo de estado al terminar --resume
   -h, --help             Muestra esta ayuda
 USAGE
@@ -130,6 +133,69 @@ load_state() {
   ZIP_PATH="$cli_zip"
   TARGET_DIR="$cli_target"
   PROFILE="$cli_profile"
+}
+
+read_env_value() {
+  local env_file="$1"
+  local key="$2"
+  grep "^${key}=" "$env_file" | tail -n1 | cut -d= -f2- || true
+}
+
+set_env_value() {
+  local env_file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp
+  tmp="$(mktemp)"
+  grep -v "^${key}=" "$env_file" >"$tmp" || true
+  printf "%s=%s\n" "$key" "$value" >>"$tmp"
+  mv "$tmp" "$env_file"
+}
+
+is_default_mqtt_password() {
+  local value="$1"
+  [[ -z "$value" || "$value" == "maximun_local_change_me" || "$value" == "CAMBIAR_ESTA_CLAVE_SEGURA" ]]
+}
+
+generate_password() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 24 | tr -d '\n'
+    return 0
+  fi
+  tr -dc 'A-Za-z0-9@#%+=:_-' </dev/urandom | head -c 24
+}
+
+ensure_secure_mqtt_password() {
+  local env_file="$1"
+  local mqtt_username
+  local current_password
+  local final_password
+  local creds_file
+
+  mqtt_username="$(read_env_value "$env_file" "MQTT_USERNAME")"
+  current_password="$(read_env_value "$env_file" "MQTT_PASSWORD")"
+  final_password="$current_password"
+
+  if [[ "$MQTT_PASSWORD_SET" == true ]]; then
+    final_password="$MQTT_PASSWORD_OVERRIDE"
+    if [[ "${#final_password}" -lt 16 ]]; then
+      fatal "--mqtt-password debe tener al menos 16 caracteres."
+    fi
+  elif is_default_mqtt_password "$final_password"; then
+    final_password="$(generate_password)"
+    warn "MQTT_PASSWORD por defecto detectada. Se genero una clave segura automaticamente."
+  fi
+
+  set_env_value "$env_file" "MQTT_PASSWORD" "$final_password"
+  set_env_value "$env_file" "MQTT_ENFORCE_STRONG_PASSWORD" "true"
+
+  creds_file="$TARGET_DIR/.mqtt_credentials.local"
+  {
+    printf "MQTT_USERNAME=%s\n" "${mqtt_username:-maximun}"
+    printf "MQTT_PASSWORD=%s\n" "$final_password"
+  } >"$creds_file"
+  chmod 600 "$creds_file"
+  log "Credenciales MQTT guardadas en $creds_file (permisos 600)."
 }
 
 run_prepare() {
@@ -233,6 +299,9 @@ run_resume() {
   log "Aplicando perfil runtime: $PROFILE"
   (cd "$TARGET_DIR" && ./ops/apply_runtime_profile.sh "$PROFILE")
 
+  log "Asegurando clave MQTT fuerte en .env..."
+  ensure_secure_mqtt_password "$TARGET_DIR/.env"
+
   log "Configurando tiers SSD/RAM..."
   (cd "$TARGET_DIR" && ./ops/storage_tier_setup.sh)
 
@@ -313,6 +382,11 @@ while [[ $# -gt 0 ]]; do
     --skip-tests)
       SKIP_TESTS=true
       shift
+      ;;
+    --mqtt-password)
+      MQTT_PASSWORD_OVERRIDE="${2:-}"
+      MQTT_PASSWORD_SET=true
+      shift 2
       ;;
     --keep-state)
       KEEP_STATE=true
