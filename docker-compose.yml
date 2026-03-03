@@ -1,0 +1,177 @@
+version: "3.9"
+
+services:
+  gateway-mqtt:
+    image: eclipse-mosquitto:2
+    container_name: gateway-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./gateway-mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - shared_logs:/logs
+    mem_limit: 100m
+    cpus: "0.10"
+
+  cognitive-core:
+    build:
+      context: ./services/cognitive-core
+    container_name: cognitive-core
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+      - rag-core
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      RAM_BUDGET_MB: "${RAM_BUDGET_MB:-8192}"
+      RESERVE_RAM_MB: "${RESERVE_RAM_MB:-512}"
+      LLM_THREADS: "${LLM_THREADS:-4}"
+      LLM_BATCH: "${LLM_BATCH:-256}"
+      QWEN_MODEL_PATH: /models_cache/qwen-2.5-1.5b-instruct.gguf
+      QWEN_CTX: "${QWEN_CTX:-2048}"
+      QWEN_N_GPU_LAYERS: "${QWEN_N_GPU_LAYERS:-0}"
+      QWEN_TEMPERATURE: "${QWEN_TEMPERATURE:-0.3}"
+      DEEPSEEK_MODEL_PATH: /models_cache/deepseek-r1-distill-qwen-1.5b.gguf
+      DEEPSEEK_CTX: "${DEEPSEEK_CTX:-2048}"
+      DEEPSEEK_N_GPU_LAYERS: "${DEEPSEEK_N_GPU_LAYERS:-0}"
+      DEEPSEEK_TEMPERATURE: "${DEEPSEEK_TEMPERATURE:-0.1}"
+      GLM_MODEL_PATH: /models_cache/glm-4-9b-chat-iq4_xs.gguf
+      GLM_CTX: "${GLM_CTX:-4096}"
+      GLM_N_GPU_LAYERS: "${GLM_N_GPU_LAYERS:-0}"
+      GLM_TEMPERATURE: "${GLM_TEMPERATURE:-0.2}"
+      QWEN_MAX_TOKENS: "${QWEN_MAX_TOKENS:-180}"
+      DEEPSEEK_MAX_TOKENS: "${DEEPSEEK_MAX_TOKENS:-420}"
+      GLM_MAX_TOKENS: "${GLM_MAX_TOKENS:-768}"
+      RAG_ENABLED: "${RAG_ENABLED:-true}"
+      RAG_QUERY_TIMEOUT_SEC: "${RAG_QUERY_TIMEOUT_SEC:-4.0}"
+      RAG_QUERY_TOPIC: "${RAG_QUERY_TOPIC:-cognition/rag/query}"
+      RAG_RESULT_TOPIC: "${RAG_RESULT_TOPIC:-cognition/rag/result}"
+      MASTER_HASH: ${MASTER_HASH:-INSERT_MASTER_HASH_HERE}
+    volumes:
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/models_cache:/models_cache:ro
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/projects:/output:rw
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/rag_store:/rag_store:rw
+      - ./config/signatures:/opt/maximun/config/signatures:rw
+      - shared_logs:/logs
+    mem_limit: 6500m
+    cpus: "3.50"
+
+  vision-cortex:
+    build:
+      context: ./services/vision-cortex
+    container_name: vision-cortex
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+      - cognitive-core
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      YOLO_MODEL_PATH: /models_cache/yolov8n.onnx
+      YOLO_CONF_THRESHOLD: "${YOLO_CONF_THRESHOLD:-0.35}"
+      YOLO_IOU_THRESHOLD: "${YOLO_IOU_THRESHOLD:-0.45}"
+      MOONDREAM_MODEL_PATH: /models_cache/moondream2-text-model-f16.gguf
+      MOONDREAM_MMPROJ_PATH: /models_cache/moondream2-mmproj-f16.gguf
+      MOONDREAM_ENABLED: "${MOONDREAM_ENABLED:-true}"
+      MOONDREAM_CTX: "${MOONDREAM_CTX:-2048}"
+      MOONDREAM_N_GPU_LAYERS: "${MOONDREAM_N_GPU_LAYERS:-0}"
+      MOONDREAM_MAX_TOKENS: "${MOONDREAM_MAX_TOKENS:-180}"
+      MOONDREAM_THREADS: "${MOONDREAM_THREADS:-4}"
+      MOONDREAM_BATCH: "${MOONDREAM_BATCH:-128}"
+      RAM_INTERLOCK_MB: "${RAM_INTERLOCK_MB:-1536}"
+      VISION_REFLEX_INTERVAL_SEC: "${VISION_REFLEX_INTERVAL_SEC:-2}"
+      CAMERA_INDEX: "${CAMERA_INDEX:-0}"
+    volumes:
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/models_cache:/models_cache:ro
+      - shared_logs:/logs
+    devices:
+      - /dev/video0:/dev/video0
+    mem_limit: 800m
+    cpus: "0.50"
+
+  audio-interface:
+    build:
+      context: ./services/audio-interface
+    container_name: audio-interface
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+      - cognitive-core
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      FASTER_WHISPER_MODEL: "${FASTER_WHISPER_MODEL:-small}"
+      FASTER_WHISPER_COMPUTE_TYPE: "${FASTER_WHISPER_COMPUTE_TYPE:-int8}"
+      FASTER_WHISPER_DEVICE: "${FASTER_WHISPER_DEVICE:-cpu}"
+      STT_CPU_THREADS: "${STT_CPU_THREADS:-4}"
+      STT_LANGUAGE: "${STT_LANGUAGE:-es}"
+      STT_MIN_CHARS: "${STT_MIN_CHARS:-3}"
+      ENABLE_STT_MIC: "${ENABLE_STT_MIC:-true}"
+      ARECORD_DEVICE: "${ARECORD_DEVICE:-default}"
+      ARECORD_SECONDS: "${ARECORD_SECONDS:-4}"
+      PIPER_VOICE_PATH: /models_cache/es_ES-sharvard-medium.onnx
+      PIPER_BIN: "${PIPER_BIN:-piper}"
+      APLAY_BIN: "${APLAY_BIN:-aplay}"
+      TTS_COOLDOWN_SEC: "${TTS_COOLDOWN_SEC:-1.2}"
+      ENABLE_STT_SIMULATOR: "${ENABLE_STT_SIMULATOR:-false}"
+    volumes:
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/models_cache:/models_cache:ro
+      - shared_logs:/logs
+    devices:
+      - /dev/snd:/dev/snd
+      - /dev/shm:/dev/shm
+    mem_limit: 600m
+    cpus: "0.50"
+
+  rag-core:
+    build:
+      context: ./services/rag-core
+    container_name: rag-core
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      RAG_CHROMA_PATH: /rag_store/chroma
+      RAG_STORAGE_ROOT: "${RAG_STORAGE_ROOT:-/rag_store}"
+      RAG_DOCS_PATH: "${RAG_DOCS_PATH:-/rag_store/docs}"
+      RAG_LOGS_PATH: "${RAG_LOGS_PATH:-/rag_store/logs}"
+      RAG_MODELS_PATH: "${RAG_MODELS_PATH:-/rag_store/models}"
+      RAG_RAM_CACHE_PATH: "${RAG_RAM_CACHE_PATH:-/dev/shm/maximun_rag_cache}"
+      RAG_QUERY_CACHE_MAX: "${RAG_QUERY_CACHE_MAX:-120}"
+      RAG_COLLECTION: "${RAG_COLLECTION:-maximun_memory}"
+      RAG_TOP_K: "${RAG_TOP_K:-4}"
+      RAG_MAX_DOC_CHARS: "${RAG_MAX_DOC_CHARS:-6000}"
+      RAG_CHUNK_SIZE_WORDS: "${RAG_CHUNK_SIZE_WORDS:-220}"
+      RAG_CHUNK_OVERLAP_WORDS: "${RAG_CHUNK_OVERLAP_WORDS:-50}"
+      RAG_AUTO_INGEST_ON_BOOT: "${RAG_AUTO_INGEST_ON_BOOT:-true}"
+      RAG_ALLOWED_EXTENSIONS: "${RAG_ALLOWED_EXTENSIONS:-pdf,md,markdown,txt,rst}"
+      RAG_EMBED_BACKEND: "${RAG_EMBED_BACKEND:-hash}"
+      RAG_EMBEDDING_MODEL: "${RAG_EMBEDDING_MODEL:-all-MiniLM-L6-v2}"
+      RAG_ENABLE_WEB_SCRAPING: "${RAG_ENABLE_WEB_SCRAPING:-false}"
+    volumes:
+      - ${MAXIMUN_DATA_ROOT:-/opt/maximun/data}/rag_store:/rag_store:rw
+      - shared_logs:/logs
+    shm_size: "256m"
+    mem_limit: 700m
+    cpus: "0.50"
+
+  dashboard:
+    build:
+      context: ./dashboard
+    container_name: maximun-dashboard
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+    environment:
+      VITE_MQTT_WS_URL: ws://localhost:9001
+    ports:
+      - "5173:5173"
+    mem_limit: 300m
+    cpus: "0.30"
+
+volumes:
+  shared_logs:
