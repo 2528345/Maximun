@@ -56,6 +56,14 @@ except ImportError:
     SentenceTransformer = None
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
+try:
+    from .self_protection import ThreatDetector as AdvancedThreatDetector
+
+    ADVANCED_THREAT_DETECTOR_AVAILABLE = True
+except Exception:
+    AdvancedThreatDetector = None
+    ADVANCED_THREAT_DETECTOR_AVAILABLE = False
+
 
 class CircuitBreakerOpenException(RuntimeError):
     pass
@@ -391,7 +399,7 @@ class IntelligentRAGDatabase:
 
         self.logger = StructuredLogger(self.logs_path)
         self.rl_agent = LightweightRLAgent(self.models_path)
-        self.threat_detector = ThreatDetector()
+        self.threat_detector = self._create_threat_detector()
         self.web_scraper = IntelligentWebScraper(
             self.storage_root / "web_cache",
             enabled=_env_bool("RAG_ENABLE_WEB_SCRAPING", False),
@@ -419,6 +427,15 @@ class IntelligentRAGDatabase:
 
         if self.auto_ingest_on_boot:
             self.ingest_path(str(self.docs_path), recursive=True)
+
+    def _create_threat_detector(self) -> Any:
+        if ADVANCED_THREAT_DETECTOR_AVAILABLE and AdvancedThreatDetector is not None:
+            try:
+                secure_root = self.storage_root / "security"
+                return AdvancedThreatDetector(storage_path=secure_root)
+            except Exception:
+                pass
+        return ThreatDetector()
 
     def _resolve_embedding_backend(self) -> None:
         requested = self.requested_backend
@@ -838,6 +855,10 @@ class IntelligentRAGDatabase:
 
     def get_system_stats(self) -> Dict[str, Any]:
         total_docs = self.collection.count() if self.collection is not None else 0
+        threat_stats = self.threat_detector.get_stats()
+        threat_stats["engine"] = (
+            "advanced_self_protection" if ADVANCED_THREAT_DETECTOR_AVAILABLE else "basic_threat_detector"
+        )
         return {
             "database": {
                 "total_documents": int(total_docs),
@@ -853,7 +874,7 @@ class IntelligentRAGDatabase:
                 "model": self.embedding_model_name if self.embed_backend == "sentence" else self.embed_backend,
             },
             "reinforcement_learning": self.rl_agent.get_stats(),
-            "threat_protection": self.threat_detector.get_stats(),
+            "threat_protection": threat_stats,
             "predictive_scaler": self.scaler.get_stats(),
             "web_scraping": self.web_scraper.get_stats(),
             "circuit_breakers": {
@@ -873,6 +894,7 @@ class IntelligentRAGDatabase:
             "ram_cache_path_exists": self.ram_cache_path.exists(),
             "pdf_parser_available": PDF_AVAILABLE,
             "numpy_available": NUMPY_AVAILABLE,
+            "advanced_threat_detector_available": ADVANCED_THREAT_DETECTOR_AVAILABLE,
         }
         return {
             "service": "rag-core",

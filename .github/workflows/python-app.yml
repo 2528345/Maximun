@@ -5,9 +5,9 @@ name: Python Services CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
 
 permissions:
   contents: read
@@ -33,7 +33,7 @@ jobs:
         flake8 services --count --exit-zero --max-complexity=12 --max-line-length=120 --statistics
     - name: Smoke scripts syntax
       run: |
-        bash -n ops/self_test.sh ops/mqtt_smoke_test.sh ops/host_permissions.sh ops/preflight_host_check.sh ops/test_by_module.sh ops/microos_bootstrap.sh ops/deploy_microos.sh ops/module_control.sh
+        bash -n ops/self_test.sh ops/mqtt_smoke_test.sh ops/host_permissions.sh ops/preflight_host_check.sh ops/test_by_module.sh ops/microos_bootstrap.sh ops/deploy_microos.sh ops/module_control.sh ops/generate_model_checksums.sh
     - name: Contract tests
       run: |
         pytest tests -q

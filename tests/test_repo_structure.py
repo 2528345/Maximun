@@ -9,6 +9,7 @@ REQUIRED_FILES = [
     "ops/check_system_consistency.sh",
     "ops/apply_runtime_profile.sh",
     "ops/storage_tier_setup.sh",
+    "ops/generate_model_checksums.sh",
     "ops/test_by_module.sh",
     "ops/microos_bootstrap.sh",
     "ops/deploy_microos.sh",
@@ -19,6 +20,7 @@ REQUIRED_FILES = [
     "services/audio-interface/app/main.py",
     "services/vision-cortex/app/main.py",
     "services/rag-core/app/main.py",
+    "services/rag-core/app/self_protection.py",
     "gateway-mqtt/mosquitto.conf",
 ]
 

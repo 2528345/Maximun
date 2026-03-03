@@ -106,6 +106,13 @@ else
   fail "No existe ${MODELS_ROOT}"
 fi
 
+CHECKSUM_FILE="${MODEL_CHECKSUM_FILE:-${MODELS_ROOT}/model_checksums.sha256}"
+if [[ -f "$CHECKSUM_FILE" ]]; then
+  ok "Manifest de checksum detectado: ${CHECKSUM_FILE}"
+else
+  fail "Falta manifest de checksum (${CHECKSUM_FILE}). Ejecuta ops/generate_model_checksums.sh"
+fi
+
 if [[ -e /dev/snd ]]; then
   ok "/dev/snd disponible"
 else

@@ -5,7 +5,10 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
+import socket
+import subprocess
 import threading
 import time
 import uuid
@@ -248,12 +251,37 @@ class CognitiveCore:
         self.llm = LlamaRuntime(model_configs)
 
         self.master_hash = os.getenv("MASTER_HASH", "INSERT_MASTER_HASH_HERE")
+        self.signature_enforcement = os.getenv("SIGNATURE_ENFORCEMENT", "true").lower() == "true"
+        self.model_checksum_file = Path(os.getenv("MODEL_CHECKSUM_FILE", "/models_cache/model_checksums.sha256"))
         self.rag_enabled = os.getenv("RAG_ENABLED", "true").lower() == "true"
         self.rag_query_timeout_sec = float(os.getenv("RAG_QUERY_TIMEOUT_SEC", "4.0"))
         self.rag_query_topic = os.getenv("RAG_QUERY_TOPIC", "cognition/rag/query")
         self.rag_result_topic = os.getenv("RAG_RESULT_TOPIC", "cognition/rag/result")
 
         self.signatures_dir = Path("/opt/maximun/config/signatures")
+        self.feedback_log_path = Path(os.getenv("ENGINEERING_FEEDBACK_LOG", "/logs/engineering_feedback.jsonl"))
+        self.reward_memory_path = Path(os.getenv("REWARD_MEMORY_PATH", "/rag_store/reward_memory.jsonl"))
+
+        self.failsafe_exec_mode = os.getenv("FAILSAFE_EXEC_MODE", "notify").strip().lower()
+        self.failsafe_hold_seconds = int(os.getenv("FAILSAFE_HOLD_SECONDS", "15"))
+        self.failsafe_services = [
+            service.strip()
+            for service in os.getenv("FAILSAFE_PODMAN_SERVICES", "gateway-mqtt,audio-interface").split(",")
+            if service.strip()
+        ]
+
+        self.smart_device = os.getenv("SMART_DEVICE", "").strip()
+        self.smart_check_interval_sec = int(os.getenv("SMART_CHECK_INTERVAL_SEC", "600"))
+        self.critical_log_source = Path(os.getenv("CRITICAL_LOG_SOURCE", "/rag_store/logs"))
+        self.critical_log_fallback = Path(os.getenv("CRITICAL_LOG_FALLBACK", "/output/critical_logs_backup"))
+        self.next_smart_check_ts = 0.0
+
+        self.safe_mode = False
+        self.integrity_violations: List[Dict[str, str]] = []
+        self.audit_override_enabled = False
+        self.artifacts_lock = threading.Lock()
+        self.last_artifacts: Dict[str, Dict[str, Any]] = {}
+
         self.stop_event = threading.Event()
         self.ram_pressure_ticks = 0
         self.mqtt_connected = False
@@ -274,11 +302,14 @@ class CognitiveCore:
 
     def start(self) -> None:
         self._install_signal_handlers()
-        self._write_signatures()
+        self._initialize_signatures()
 
         self.client.connect(self.mqtt_host, self.mqtt_port, keepalive=60)
         self.client.loop_start()
         self._wait_for_mqtt(10)
+
+        if self.safe_mode:
+            self._publish_safe_mode_notice()
 
         try:
             self._activate_model("qwen")
@@ -313,6 +344,9 @@ class CognitiveCore:
         client.subscribe("perception/vision/analysis_result")
         client.subscribe("system/brain/load")
         client.subscribe("system/brain/load/+")
+        client.subscribe("system/audit/override")
+        client.subscribe("action/engineering/approval")
+        client.subscribe("cognition/engineering/feedback")
         client.subscribe("system/integrity/self_test")
         client.subscribe(self.rag_result_topic)
 
@@ -352,6 +386,26 @@ class CognitiveCore:
                 self._handle_brain_load_request(model)
             return
 
+        if topic == "system/audit/override":
+            self.audit_override_enabled = bool(payload.get("enabled", False))
+            self._publish(
+                "system/audit/override_ack",
+                {
+                    "enabled": self.audit_override_enabled,
+                    "source": str(payload.get("source", "unknown")),
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        if topic == "action/engineering/approval":
+            self._handle_engineering_approval(payload)
+            return
+
+        if topic == "cognition/engineering/feedback":
+            self._handle_engineering_feedback(payload)
+            return
+
         if topic == "perception/vision/analysis_result":
             self._publish(
                 "cognition/context/vision",
@@ -388,6 +442,34 @@ class CognitiveCore:
             )
             return
 
+        if self.safe_mode:
+            self._publish(
+                "action/speech/request",
+                {
+                    "text": (
+                        "Modo seguro activo por integridad. "
+                        "Solo respuestas L1 disponibles hasta corregir firmas."
+                    )
+                },
+            )
+            self._publish(
+                "system/resource/safe_mode",
+                {
+                    "enabled": True,
+                    "reason": "integrity_violation",
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        self._publish(
+            "system/brain/load/glm4",
+            {
+                "source": "cognitive-core",
+                "reason": "complex_task_detected",
+                "timestamp": int(time.time()),
+            },
+        )
         threading.Thread(target=self._run_engineering_duel, args=(text,), daemon=True).start()
 
     def _qwen_reflex_reply(self, text: str) -> str:
@@ -433,6 +515,19 @@ class CognitiveCore:
         return len(text_l) < 120 and not any(marker in text_l for marker in complex_markers)
 
     def _handle_brain_load_request(self, model: str) -> None:
+        if self.safe_mode and model != "qwen":
+            self._publish(
+                "system/brain/load_ack",
+                {
+                    "requested": model,
+                    "status": "rejected",
+                    "error": "safe_mode_integrity_violation",
+                    "resource": self.resource.snapshot(),
+                    "llm_loaded": self.llm.loaded_aliases(),
+                },
+            )
+            return
+
         try:
             self._activate_model(model)
             self._publish(
@@ -457,6 +552,9 @@ class CognitiveCore:
             )
 
     def _activate_model(self, alias: str) -> None:
+        if self.safe_mode and alias != "qwen":
+            raise RuntimeError("Modo seguro activo: solo se permite qwen")
+
         self.resource.hot_swap(alias)
 
         keep_aliases = {"qwen"}
@@ -484,15 +582,20 @@ class CognitiveCore:
                 )
 
     def _run_engineering_duel(self, prompt: str) -> None:
+        artifact_id = f"eng-{uuid.uuid4().hex[:10]}"
         self._publish("system/resource/pause", {"source": "cognitive-core", "pause": True})
 
         try:
+            if self.safe_mode:
+                raise RuntimeError("Modo seguro activo. Duelo de ingenieria bloqueado.")
+
             rag_context = self._query_rag_context(prompt)
             self._activate_model("glm4")
             draft = self._glm_generate_draft(prompt, rag_context)
             self._publish(
                 "project/engineering/draft",
                 {
+                    "artifact_id": artifact_id,
                     "prompt": prompt,
                     "model": "glm-4-9b-chat-iq4_xs",
                     "draft": draft,
@@ -500,28 +603,66 @@ class CognitiveCore:
                 },
             )
 
-            self._activate_model("deepseek")
-            audit = self._deepseek_audit(prompt, draft)
-            self._publish(
-                "cognition/thought/trace",
-                {
-                    "auditor": "deepseek-r1-distill-qwen-1.5b",
-                    "audit_summary": audit["summary"],
+            if self.audit_override_enabled:
+                audit = {
+                    "summary": "Auditoria omitida por override manual del usuario.",
+                    "mandatory_changes": [],
+                }
+                self._publish(
+                    "cognition/thought/trace",
+                    {
+                        "artifact_id": artifact_id,
+                        "auditor": "deepseek-r1-distill-qwen-1.5b",
+                        "audit_summary": audit["summary"],
+                        "mandatory_changes": audit["mandatory_changes"],
+                        "override": True,
+                        "timestamp": int(time.time()),
+                    },
+                )
+            else:
+                self._activate_model("deepseek")
+                audit = self._deepseek_audit(prompt, draft)
+                self._publish(
+                    "cognition/thought/trace",
+                    {
+                        "artifact_id": artifact_id,
+                        "auditor": "deepseek-r1-distill-qwen-1.5b",
+                        "audit_summary": audit["summary"],
+                        "mandatory_changes": audit["mandatory_changes"],
+                        "override": False,
+                        "timestamp": int(time.time()),
+                    },
+                )
+
+            self._activate_model("glm4")
+            if audit["mandatory_changes"]:
+                final_artifact = self._glm_apply_changes(draft, audit["mandatory_changes"])
+            else:
+                final_artifact = draft
+
+            self._remember_artifact(
+                artifact_id=artifact_id,
+                payload={
+                    "artifact_id": artifact_id,
+                    "prompt": prompt,
+                    "draft": draft,
+                    "result": final_artifact,
                     "mandatory_changes": audit["mandatory_changes"],
+                    "audit_summary": audit["summary"],
+                    "override": self.audit_override_enabled,
                     "timestamp": int(time.time()),
                 },
             )
 
-            self._activate_model("glm4")
-            final_artifact = self._glm_apply_changes(draft, audit["mandatory_changes"])
-
             self._publish(
                 "action/engineering/final",
                 {
+                    "artifact_id": artifact_id,
                     "prompt": prompt,
                     "model": "glm-4-9b-chat-iq4_xs",
                     "result": final_artifact,
                     "mandatory_changes_applied": len(audit["mandatory_changes"]),
+                    "override": self.audit_override_enabled,
                     "timestamp": int(time.time()),
                 },
             )
@@ -692,6 +833,7 @@ class CognitiveCore:
 
             self._maybe_publish_throttle(status)
             self._maybe_publish_failsafe(status)
+            self._maybe_check_storage_health()
             time.sleep(5)
 
     def _maybe_publish_throttle(self, status: Dict[str, object]) -> None:
@@ -716,28 +858,24 @@ class CognitiveCore:
             self.ram_pressure_ticks = 0
 
         if self.ram_pressure_ticks >= 3:
-            self._publish(
-                "system/resource/failsafe",
-                {
-                    "level": "CRITICO",
-                    "reason": "ram_pressure",
-                    "memory_percent": memory_percent,
-                    "recommended_action": "reiniciar solo gateway-mqtt y audio-interface",
-                    "timestamp": int(time.time()),
-                },
-            )
+            self._execute_failsafe(memory_percent)
             self.ram_pressure_ticks = 0
 
     def _publish_local_self_test(self) -> None:
+        mqtt_latency_ms = self._measure_mqtt_latency_ms()
         report = {
             "service": "cognitive-core",
             "timestamp": int(time.time()),
             "checks": {
                 "models_exist": self._check_models_exist(),
+                "model_checksums_valid": self._check_model_checksums(),
                 "swap_available": psutil.swap_memory().total > 0,
                 "mqtt_configured": bool(self.mqtt_host and self.mqtt_port),
+                "mqtt_ping_under_10ms": bool(mqtt_latency_ms is not None and mqtt_latency_ms < 10.0),
                 "llama_cpp_available": LLAMA_CPP_AVAILABLE,
+                "signatures_valid": not self.safe_mode,
             },
+            "metrics": {"mqtt_ping_ms": mqtt_latency_ms},
         }
         report["overall_ok"] = all(report["checks"].values())
         self._publish("system/integrity/report", report)
@@ -752,12 +890,424 @@ class CognitiveCore:
             return False
         return all(Path(path).exists() for path in model_paths)
 
-    def _write_signatures(self) -> None:
+    def _initialize_signatures(self) -> None:
         self.signatures_dir.mkdir(parents=True, exist_ok=True)
         modules = ["audio", "vision", "brain"]
+        violations: List[Dict[str, str]] = []
+
         for module in modules:
-            digest = hashlib.sha256(f"{self.master_hash}:{module}".encode("utf-8")).hexdigest()
-            (self.signatures_dir / f"{module}.signature").write_text(digest + "\n", encoding="utf-8")
+            expected = hashlib.sha256(f"{self.master_hash}:{module}".encode("utf-8")).hexdigest()
+            signature_path = self.signatures_dir / f"{module}.signature"
+
+            if signature_path.exists():
+                current = signature_path.read_text(encoding="utf-8", errors="replace").strip()
+                if current != expected:
+                    violations.append(
+                        {
+                            "module": module,
+                            "signature_file": str(signature_path),
+                            "expected": expected,
+                            "found": current,
+                        }
+                    )
+                continue
+
+            signature_path.write_text(expected + "\n", encoding="utf-8")
+
+        self.integrity_violations = violations
+        if violations and self.signature_enforcement:
+            self.safe_mode = True
+
+    def _publish_safe_mode_notice(self) -> None:
+        self._publish(
+            "system/integrity/violation",
+            {
+                "service": "cognitive-core",
+                "safe_mode": True,
+                "violations": self.integrity_violations,
+                "timestamp": int(time.time()),
+            },
+        )
+        self._publish(
+            "system/resource/pause",
+            {
+                "source": "cognitive-core",
+                "pause": True,
+                "reason": "integrity_violation",
+                "timestamp": int(time.time()),
+            },
+        )
+        self._publish(
+            "action/speech/request",
+            {
+                "text": (
+                    "Protocolo de integridad activo. "
+                    "Se detecto mismatch de firmas, entrando en modo seguro."
+                )
+            },
+        )
+
+    def _check_model_checksums(self) -> bool:
+        if not self.model_checksum_file.exists():
+            return False
+
+        expected_by_file: Dict[Path, str] = {}
+        try:
+            for raw in self.model_checksum_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                digest, rel_path = parts
+                rel_path = rel_path.strip().lstrip("*")
+                if not digest or not rel_path:
+                    continue
+                rel_path_obj = Path(rel_path)
+                model_path = rel_path_obj if rel_path_obj.is_absolute() else (Path("/models_cache") / rel_path_obj)
+                expected_by_file[model_path] = digest.lower()
+        except Exception:
+            return False
+
+        if not expected_by_file:
+            return False
+
+        for model_path, expected in expected_by_file.items():
+            if not model_path.exists():
+                return False
+            actual = self._sha256_file(model_path)
+            if actual != expected:
+                return False
+        return True
+
+    @staticmethod
+    def _sha256_file(path: Path) -> str:
+        hasher = hashlib.sha256()
+        with path.open("rb") as handle:
+            while True:
+                block = handle.read(1024 * 1024)
+                if not block:
+                    break
+                hasher.update(block)
+        return hasher.hexdigest()
+
+    def _measure_mqtt_latency_ms(self) -> float | None:
+        start = time.time()
+        sock: socket.socket | None = None
+        try:
+            sock = socket.create_connection((self.mqtt_host, self.mqtt_port), timeout=1.5)
+            return round((time.time() - start) * 1000.0, 3)
+        except Exception:
+            return None
+        finally:
+            if sock is not None:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+
+    def _execute_failsafe(self, memory_percent: float) -> None:
+        self._publish(
+            "system/resource/failsafe",
+            {
+                "level": "CRITICO",
+                "reason": "ram_pressure",
+                "memory_percent": memory_percent,
+                "mode": self.failsafe_exec_mode,
+                "services": self.failsafe_services,
+                "hold_seconds": self.failsafe_hold_seconds,
+                "timestamp": int(time.time()),
+            },
+        )
+        self._publish(
+            "action/speech/request",
+            {
+                "text": (
+                    "Protocolo de autopreservacion activo. RAM saturada. "
+                    "Intentando recuperacion del nucleo cognitivo."
+                )
+            },
+        )
+        self._publish(
+            "system/resource/pause",
+            {
+                "source": "cognitive-core",
+                "pause": True,
+                "reason": "failsafe_ram_pressure",
+                "timestamp": int(time.time()),
+            },
+        )
+
+        if self.failsafe_exec_mode != "execute":
+            self._publish(
+                "system/resource/failsafe_result",
+                {
+                    "executed": False,
+                    "reason": "notify_mode",
+                    "runbook": "podman stop --all && podman start gateway-mqtt audio-interface",
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        if shutil.which("podman") is None:
+            self._publish(
+                "system/resource/failsafe_result",
+                {
+                    "executed": False,
+                    "reason": "podman_not_available",
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        steps: List[Dict[str, Any]] = []
+        command_plan = [
+            ["podman", "stop", "--all"],
+            ["podman", "start", *self.failsafe_services],
+        ]
+        for cmd in command_plan:
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=45,
+                    text=True,
+                )
+                steps.append(
+                    {
+                        "command": " ".join(cmd),
+                        "returncode": proc.returncode,
+                        "stdout": proc.stdout[-600:],
+                        "stderr": proc.stderr[-600:],
+                    }
+                )
+            except Exception as exc:
+                steps.append({"command": " ".join(cmd), "error": str(exc), "returncode": -1})
+
+        self._publish(
+            "system/resource/failsafe_result",
+            {
+                "executed": True,
+                "steps": steps,
+                "timestamp": int(time.time()),
+            },
+        )
+
+    def _maybe_check_storage_health(self) -> None:
+        if not self.smart_device:
+            return
+
+        now = time.time()
+        if now < self.next_smart_check_ts:
+            return
+        self.next_smart_check_ts = now + max(60, self.smart_check_interval_sec)
+
+        result = self._smart_health_check()
+        self._publish(
+            "system/storage/health",
+            {
+                "service": "cognitive-core",
+                "device": self.smart_device,
+                "status": result.get("status", "unknown"),
+                "details": result.get("details", ""),
+                "timestamp": int(time.time()),
+            },
+        )
+
+        if result.get("status") != "failing":
+            return
+
+        migration = self._migrate_critical_logs()
+        self._publish(
+            "system/storage/migration",
+            {
+                "service": "cognitive-core",
+                "status": migration.get("status", "unknown"),
+                "migrated_files": migration.get("migrated_files", 0),
+                "source": str(self.critical_log_source),
+                "target": str(self.critical_log_fallback),
+                "timestamp": int(time.time()),
+            },
+        )
+
+    def _smart_health_check(self) -> Dict[str, str]:
+        if shutil.which("smartctl") is None:
+            return {"status": "unknown", "details": "smartctl_not_available"}
+        if not Path(self.smart_device).exists():
+            return {"status": "unknown", "details": "device_not_found"}
+
+        try:
+            proc = subprocess.run(
+                ["smartctl", "-H", self.smart_device],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=30,
+                text=True,
+            )
+            output = f"{proc.stdout}\n{proc.stderr}".upper()
+            if "PASSED" in output:
+                return {"status": "healthy", "details": "smart_passed"}
+            if "FAILED" in output or "FAIL" in output:
+                return {"status": "failing", "details": "smart_failed"}
+            return {"status": "unknown", "details": output[-240:]}
+        except Exception as exc:
+            return {"status": "unknown", "details": str(exc)}
+
+    def _migrate_critical_logs(self) -> Dict[str, Any]:
+        if not self.critical_log_source.exists():
+            return {"status": "source_missing", "migrated_files": 0}
+
+        self.critical_log_fallback.mkdir(parents=True, exist_ok=True)
+        migrated = 0
+        for src in self.critical_log_source.rglob("*"):
+            if not src.is_file():
+                continue
+            rel_path = src.relative_to(self.critical_log_source)
+            dst = self.critical_log_fallback / rel_path
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(src, dst)
+                migrated += 1
+            except Exception:
+                continue
+
+        if migrated == 0:
+            return {"status": "no_files_copied", "migrated_files": 0}
+        return {"status": "migrated", "migrated_files": migrated}
+
+    def _remember_artifact(self, artifact_id: str, payload: Dict[str, Any]) -> None:
+        with self.artifacts_lock:
+            self.last_artifacts[artifact_id] = payload
+            if len(self.last_artifacts) > 100:
+                oldest = next(iter(self.last_artifacts.keys()))
+                self.last_artifacts.pop(oldest, None)
+
+    def _get_artifact(self, artifact_id: str) -> Dict[str, Any] | None:
+        with self.artifacts_lock:
+            return self.last_artifacts.get(artifact_id)
+
+    def _handle_engineering_feedback(self, payload: Dict[str, Any]) -> None:
+        artifact_id = str(payload.get("artifact_id", "")).strip()
+        feedback_value = float(payload.get("feedback_value", 0.0))
+        feedback_type = str(payload.get("feedback_type", "explicit")).strip() or "explicit"
+        user_id = str(payload.get("user_id", "dashboard")).strip() or "dashboard"
+        comment = str(payload.get("comment", "")).strip()
+        artifact = self._get_artifact(artifact_id) if artifact_id else None
+
+        self._append_jsonl(
+            self.feedback_log_path,
+            {
+                "event": "engineering_feedback",
+                "artifact_id": artifact_id,
+                "feedback_type": feedback_type,
+                "feedback_value": feedback_value,
+                "comment": comment,
+                "user_id": user_id,
+                "timestamp": int(time.time()),
+                "artifact": artifact,
+            },
+        )
+
+    def _handle_engineering_approval(self, payload: Dict[str, Any]) -> None:
+        artifact_id = str(payload.get("artifact_id", "")).strip()
+        decision = str(payload.get("decision", "")).strip().lower()
+        comment = str(payload.get("comment", "")).strip()
+        user_id = str(payload.get("user_id", "dashboard")).strip() or "dashboard"
+        artifact = self._get_artifact(artifact_id) if artifact_id else None
+
+        self._append_jsonl(
+            self.feedback_log_path,
+            {
+                "event": "engineering_approval",
+                "artifact_id": artifact_id,
+                "decision": decision,
+                "comment": comment,
+                "user_id": user_id,
+                "timestamp": int(time.time()),
+                "artifact": artifact,
+            },
+        )
+
+        if decision in {"aprobar", "approve", "approved"}:
+            self._publish(
+                "action/speech/request",
+                {"text": "Caso de exito guardado en memoria de refuerzo."},
+            )
+            self._publish(
+                "action/engineering/approval_ack",
+                {
+                    "artifact_id": artifact_id,
+                    "status": "approved",
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        if decision in {"corregir", "correct", "correction"}:
+            if artifact is not None and comment:
+                reward_text = (
+                    "Caso supervisado por usuario.\n\n"
+                    f"Prompt:\n{artifact.get('prompt', '')}\n\n"
+                    f"Respuesta final:\n{artifact.get('result', '')}\n\n"
+                    f"Correccion del usuario:\n{comment}\n"
+                )
+                self._append_jsonl(
+                    self.reward_memory_path,
+                    {
+                        "prompt": artifact.get("prompt", ""),
+                        "response": artifact.get("result", ""),
+                        "feedback_user": comment,
+                        "artifact_id": artifact_id,
+                        "timestamp": int(time.time()),
+                    },
+                )
+                self._publish(
+                    "cognition/rag/upsert",
+                    {
+                        "source": "human_feedback",
+                        "documents": [
+                            {
+                                "text": reward_text,
+                                "metadata": {
+                                    "artifact_id": artifact_id,
+                                    "user_id": user_id,
+                                    "tag": "ground_truth_feedback",
+                                    "timestamp": int(time.time()),
+                                },
+                            }
+                        ],
+                    },
+                )
+            self._publish(
+                "action/engineering/approval_ack",
+                {
+                    "artifact_id": artifact_id,
+                    "status": "correction_saved",
+                    "timestamp": int(time.time()),
+                },
+            )
+            return
+
+        self._publish(
+            "action/engineering/approval_ack",
+            {
+                "artifact_id": artifact_id,
+                "status": "ignored",
+                "reason": "unknown_decision",
+                "timestamp": int(time.time()),
+            },
+        )
+
+    @staticmethod
+    def _append_jsonl(path: Path, payload: Dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
 
     def _read_max_thermal_c(self) -> float | None:
         thermal_root = Path("/sys/class/thermal")

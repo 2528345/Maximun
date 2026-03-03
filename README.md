@@ -9,7 +9,8 @@ Offline-first personal assistant stack for openSUSE MicroOS on Lenovo 330s (i5, 
 - `services/audio-interface`: Faster-Whisper STT + Piper TTS
 - `services/vision-cortex`: YOLOv8n ONNX reflex + Moondream2 deliberate analysis
 - `services/rag-core`: ChromaDB offline memory (RAG over local documents)
-- `dashboard`: real-time monitor/control UI
+- `services/rag-core/app/self_protection.py`: detector multicapa con cifrado (fallback) y contador homomórfico opcional (Paillier)
+- `dashboard`: real-time monitor/control UI with RLHF controls (`APROBAR/CORREGIR`, feedback, auditor override)
 
 ## What was removed from legacy mix
 
@@ -79,6 +80,7 @@ For openSUSE MicroOS host preparation, follow:
 ## Module tests
 
 ```bash
+./ops/generate_model_checksums.sh
 ./ops/self_test.sh
 ./ops/mqtt_smoke_test.sh
 ./ops/test_by_module.sh
@@ -155,3 +157,7 @@ MQTT topics for ingestion/feedback:
 
 - The stack is designed to stay offline after models are present locally.
 - If dependencies/models are missing, services publish `system/error` instead of crashing the full bus.
+- Integrity checks: `cognitive-core` validates signature files and optional model checksum manifest (`model_checksums.sha256`).
+- Failsafe mode supports `notify` (default) and optional `execute` strategy via `FAILSAFE_EXEC_MODE`.
+- `rag-core` usa detector avanzado si `self_protection.py` carga correctamente; si no, cae al detector basico.
+- `rag-core` incluye `cryptography` y `phe` para cifrado y contador homomorfico ligero (Paillier).
