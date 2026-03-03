@@ -35,6 +35,20 @@ cd /root/codex
 ./ops/generate_mqtt_tls_certs.sh
 ```
 
+## 1.1) Instalacion automatizada desde USB (zip)
+
+Para un host limpio puedes usar el instalador en 2 etapas:
+
+```bash
+# Etapa 1: instala base del host y deja estado
+./ops/install_from_usb.sh --prepare --zip /run/media/$USER/USB/Maximun_V5.1_full_with_local.zip
+
+# Reinicia el host (MicroOS aplica transactional-update al reiniciar)
+
+# Etapa 2: extrae zip, aplica perfil, valida y despliega
+./ops/install_from_usb.sh --resume
+```
+
 ## 2) Estrategia de almacenamiento (SSD 256GB + HDD 1TB)
 
 Recomendado para 8GB RAM:

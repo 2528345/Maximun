@@ -33,7 +33,7 @@ jobs:
         flake8 services --count --exit-zero --max-complexity=12 --max-line-length=120 --statistics
     - name: Smoke scripts syntax
       run: |
-        bash -n ops/self_test.sh ops/mqtt_smoke_test.sh ops/host_permissions.sh ops/preflight_host_check.sh ops/test_by_module.sh ops/microos_bootstrap.sh ops/deploy_microos.sh ops/module_control.sh ops/generate_model_checksums.sh ops/generate_mqtt_tls_certs.sh ops/autocheck_modules.sh ops/install_autocheck_service.sh
+        bash -n ops/self_test.sh ops/mqtt_smoke_test.sh ops/host_permissions.sh ops/preflight_host_check.sh ops/test_by_module.sh ops/microos_bootstrap.sh ops/install_from_usb.sh ops/deploy_microos.sh ops/module_control.sh ops/check_system_consistency.sh ops/generate_model_checksums.sh ops/generate_mqtt_tls_certs.sh ops/autocheck_modules.sh ops/install_autocheck_service.sh
     - name: Contract tests
       run: |
         pytest tests -q

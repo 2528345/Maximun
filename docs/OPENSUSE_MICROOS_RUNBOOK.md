@@ -20,6 +20,20 @@ cd /root/codex
 
 After `transactional-update`, reboot host.
 
+## 1.1) Optional USB zip installer (recommended for fresh installs)
+
+Two-stage flow for a zip on USB:
+
+```bash
+# stage 1 (before reboot)
+./ops/install_from_usb.sh --prepare --zip /run/media/$USER/USB/Maximun_V5.1_full_with_local.zip
+
+# reboot host
+
+# stage 2 (after reboot)
+./ops/install_from_usb.sh --resume
+```
+
 ## 2) Host permissions and data layout
 
 ```bash

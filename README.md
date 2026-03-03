@@ -91,6 +91,23 @@ podman compose up -d
 podman compose ps
 ```
 
+## USB zip install (MicroOS, 2-stage)
+
+If you have the project `.zip` on USB and want end-to-end deployment:
+
+```bash
+# Stage 1: host bootstrap + save installer state
+./ops/install_from_usb.sh --prepare --zip /run/media/$USER/USB/Maximun_V5.1_full_with_local.zip
+
+# reboot host
+
+# Stage 2: extract zip + apply profile + deploy stack
+./ops/install_from_usb.sh --resume
+```
+
+By default it deploys to `/opt/maximun/Maximun_V5.1` using profile `lenovo330s_stable`.
+Override with `--target` and `--profile`.
+
 Dashboard: `http://localhost:5173`
 
 For openSUSE MicroOS host preparation, follow:
@@ -184,6 +201,7 @@ MQTT topics for ingestion/feedback:
   - smoke/module tests in `ops/`
 - Deployment scripts:
   - `ops/microos_bootstrap.sh`
+  - `ops/install_from_usb.sh`
   - `ops/deploy_microos.sh`
   - `ops/apply_runtime_profile.sh`
   - `ops/storage_tier_setup.sh`

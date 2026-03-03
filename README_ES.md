@@ -86,6 +86,23 @@ cp .env.example .env
 ./ops/deploy_microos.sh
 ```
 
+## Instalación desde USB (ZIP, 2 etapas)
+
+Si tienes el proyecto en un `.zip` dentro de una memoria USB:
+
+```bash
+# Etapa 1: bootstrap host + guardar estado de instalacion
+./ops/install_from_usb.sh --prepare --zip /run/media/$USER/USB/Maximun_V5.1_full_with_local.zip
+
+# reinicia el host
+
+# Etapa 2: extrae zip + aplica perfil + despliega stack
+./ops/install_from_usb.sh --resume
+```
+
+Por defecto despliega en `/opt/maximun/Maximun_V5.1` con perfil `lenovo330s_stable`.
+Puedes cambiarlo con `--target` y `--profile`.
+
 Dashboard (si `ENABLE_UI=true`): `http://localhost:5173`
 
 ## Perfiles runtime (8GB)

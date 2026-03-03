@@ -11,7 +11,7 @@ fi
 
 cmds=(
   "sudo transactional-update dup"
-  "sudo transactional-update pkg install podman podman-compose git curl jq awk sed grep coreutils shadow util-linux"
+  "sudo transactional-update pkg install podman podman-compose git curl jq awk sed grep coreutils shadow util-linux ripgrep unzip"
   "sudo transactional-update pkg install python311 python311-pip"
   "sudo transactional-update pkg install alsa-utils v4l-utils"
 )
