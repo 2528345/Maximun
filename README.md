@@ -61,6 +61,9 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
 
 ```bash
 cp .env.example .env
+./ops/apply_runtime_profile.sh lenovo330s_stable
+./ops/storage_tier_setup.sh
+./ops/check_system_consistency.sh || true
 ./ops/preflight_host_check.sh
 podman compose build
 podman compose up -d
@@ -81,6 +84,53 @@ For openSUSE MicroOS host preparation, follow:
 ./ops/test_by_module.sh
 ```
 
+## Runtime profiles (8GB)
+
+```bash
+# List available profiles
+./ops/apply_runtime_profile.sh --list
+
+# Stable mode (recommended daily)
+./ops/apply_runtime_profile.sh lenovo330s_stable
+
+# Engineering mode (heavier GLM/DeepSeek cycle)
+./ops/apply_runtime_profile.sh lenovo330s_engineering
+```
+
+Run consistency check after switching profile:
+
+```bash
+./ops/check_system_consistency.sh
+```
+
+`deploy_microos.sh` starts core services by default (`gateway-mqtt`, `rag-core`, `cognitive-core`, `audio-interface`) to stay inside 8GB.
+Optional modules are controlled by `.env`:
+
+- `ENABLE_UI=true` to include `dashboard`
+- `ENABLE_VISION=true` to include `vision-cortex`
+
+## SSD + RAM tiering for RAG
+
+- SSD persistent data: `${MAXIMUN_DATA_ROOT}/rag_store`
+- RAM cache (tmpfs): `${RAG_RAM_CACHE_PATH}` (default `/dev/shm/maximun_rag_cache`)
+- Target free SSD budget check: `${RAG_SSD_BUDGET_GB}` GB
+- Recommended SSD free space for project/RAG workload: `>= 60GB` (prefer `>= 80GB`)
+- Query cache TTL in RAM: `${RAG_QUERY_CACHE_TTL_SEC}` seconds
+
+Prepare tiers:
+
+```bash
+./ops/storage_tier_setup.sh
+```
+
+Supported RAG ingestion formats: `pdf`, `md`, `markdown`, `txt`, `rst`.
+
+MQTT topics for ingestion/feedback:
+
+- `cognition/rag/ingest_path`
+- `cognition/rag/feedback`
+- `cognition/rag/stats/get`
+
 ## Repo coverage checklist
 
 - Configuration: `docker-compose.yml`, `.env.example`, `gateway-mqtt/mosquitto.conf`
@@ -91,6 +141,9 @@ For openSUSE MicroOS host preparation, follow:
 - Deployment scripts:
   - `ops/microos_bootstrap.sh`
   - `ops/deploy_microos.sh`
+  - `ops/apply_runtime_profile.sh`
+  - `ops/storage_tier_setup.sh`
+  - `ops/check_system_consistency.sh`
   - `ops/module_control.sh`
 
 ## Flow and troubleshooting

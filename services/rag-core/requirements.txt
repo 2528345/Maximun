@@ -1,2 +1,4 @@
 paho-mqtt==2.1.0
 chromadb==0.5.23
+pypdf==5.1.0
+numpy==1.26.4

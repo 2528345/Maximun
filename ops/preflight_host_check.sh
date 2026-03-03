@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODELS_ROOT="/opt/maximun/data/models_cache"
+DATA_ROOT="/opt/maximun/data"
+if [[ -f .env ]]; then
+  env_data_root="$(grep '^MAXIMUN_DATA_ROOT=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_data_root" ]] && DATA_ROOT="$env_data_root"
+fi
+
+MODELS_ROOT="${DATA_ROOT}/models_cache"
+RAG_ROOT="${DATA_ROOT}/rag_store"
+PROJECTS_ROOT="${DATA_ROOT}/projects"
+RAG_DOCS_ROOT="${RAG_ROOT}/docs"
+RAG_RAM_CACHE="/dev/shm/maximun_rag_cache"
+if [[ -f .env ]]; then
+  env_ram_cache="$(grep '^RAG_RAM_CACHE_PATH=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_ram_cache" ]] && RAG_RAM_CACHE="$env_ram_cache"
+fi
+
 REQUIRED_MODELS=(
   "qwen-2.5-1.5b-instruct.gguf"
   "deepseek-r1-distill-qwen-1.5b.gguf"
@@ -15,6 +30,15 @@ REQUIRED_MODELS=(
 warn=0
 ok() { echo "[OK]   $*"; }
 fail() { echo "[WARN] $*"; warn=1; }
+
+if [[ -f .env ]]; then
+  active_profile="$(grep '^MAXIMUN_RUNTIME_PROFILE=' .env | tail -n1 | cut -d= -f2- || true)"
+  if [[ -n "$active_profile" ]]; then
+    ok "Perfil runtime activo: $active_profile"
+  fi
+fi
+
+ok "Raiz de datos configurada: ${DATA_ROOT}"
 
 if [[ -f /etc/os-release ]]; then
   if grep -qi "opensuse" /etc/os-release; then
@@ -51,10 +75,22 @@ else
   fail "Swap baja (${swap_mb}MB). Recomendado >= 2GB en SSD"
 fi
 
-if [[ -d /opt/maximun/data/projects && -d /opt/maximun/data/rag_store ]]; then
+if [[ -d "$PROJECTS_ROOT" && -d "$RAG_ROOT" ]]; then
   ok "Directorios de datos presentes"
 else
-  fail "Falta estructura /opt/maximun/data/{projects,rag_store}"
+  fail "Falta estructura ${DATA_ROOT}/{projects,rag_store}"
+fi
+
+if [[ -d "$RAG_DOCS_ROOT" ]]; then
+  ok "RAG docs path presente: ${RAG_DOCS_ROOT}"
+else
+  fail "Falta ruta de documentos RAG: ${RAG_DOCS_ROOT}"
+fi
+
+if [[ -d "$RAG_RAM_CACHE" ]]; then
+  ok "RAG RAM cache presente: ${RAG_RAM_CACHE}"
+else
+  fail "Falta cache RAM RAG: ${RAG_RAM_CACHE}"
 fi
 
 if [[ -d "$MODELS_ROOT" ]]; then
@@ -80,6 +116,29 @@ if [[ -e /dev/video0 ]]; then
   ok "/dev/video0 disponible"
 else
   fail "No existe /dev/video0"
+fi
+
+if command -v lsblk >/dev/null 2>&1; then
+  dev="$(df -P "$DATA_ROOT" | awk 'NR==2 {print $1}')"
+  rota="$(lsblk -no ROTA "$dev" 2>/dev/null | head -n1 || true)"
+  if [[ "$rota" == "0" ]]; then
+    ok "Datos sobre SSD/NVMe (ROTA=0)"
+  elif [[ "$rota" == "1" ]]; then
+    fail "Datos sobre HDD rotacional (ROTA=1)"
+  else
+    fail "No se pudo determinar el tipo de disco para ${dev}"
+  fi
+fi
+
+if command -v df >/dev/null 2>&1; then
+  free_gb="$(df -BG "$DATA_ROOT" | awk 'NR==2 {gsub("G", "", $4); print $4+0}')"
+  if [[ -n "$free_gb" ]]; then
+    if (( free_gb >= 60 )); then
+      ok "Espacio libre en SSD ${free_gb}GB"
+    else
+      fail "Espacio libre bajo en SSD (${free_gb}GB). Recomendado >= 60GB"
+    fi
+  fi
 fi
 
 groups=$(id -Gn 2>/dev/null || true)

@@ -132,7 +132,8 @@ fi
 # 5) rag-core readiness + query path
 out6=$(mktemp)
 out7=$(mktemp)
-trap 'rm -f "$out1" "$out2" "$out3" "$out4" "$out5" "$out6" "$out7"' EXIT
+out8=$(mktemp)
+trap 'rm -f "$out1" "$out2" "$out3" "$out4" "$out5" "$out6" "$out7" "$out8"' EXIT
 
 if mqtt_wait_topic "system/rag/ready" "$out6"; then
   ok "rag-core emite system/rag/ready"
@@ -150,15 +151,30 @@ else
   ng "rag-core no respondio consulta"
 fi
 
+# RAG ingestion path command
+(mqtt_wait_topic "cognition/rag/index/status" "$out8") &
+sub_pid=$!
+sleep 1
+mqtt_pub "cognition/rag/ingest_path" '{"path":"/rag_store/docs","recursive":true}' || true
+if wait "$sub_pid"; then
+  ok "rag-core acepta ingestion por path y publica index/status"
+else
+  ng "rag-core no respondio al comando ingest_path"
+fi
+
 # 6) dashboard port
-if command -v curl >/dev/null 2>&1; then
-  if curl -fsS "http://localhost:5173" >/dev/null 2>&1; then
-    ok "dashboard accesible en http://localhost:5173"
+if service_running "maximun-dashboard"; then
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsS "http://localhost:5173" >/dev/null 2>&1; then
+      ok "dashboard accesible en http://localhost:5173"
+    else
+      ng "dashboard no accesible en puerto 5173"
+    fi
   else
-    ng "dashboard no accesible en puerto 5173"
+    ng "curl no disponible; no se pudo probar dashboard"
   fi
 else
-  ng "curl no disponible; no se pudo probar dashboard"
+  ng "dashboard no activo (ENABLE_UI=false o contenedor caido)"
 fi
 
 echo

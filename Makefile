@@ -1,4 +1,6 @@
-.PHONY: up down build logs ps preflight self-test smoke test-modules bootstrap-microos deploy-microos module-status
+.PHONY: up down build logs ps preflight self-test smoke test-modules bootstrap-microos deploy-microos module-status apply-profile list-profiles check-consistency storage-tier
+
+PROFILE ?= lenovo330s_stable
 
 build:
 	podman compose build
@@ -35,3 +37,15 @@ deploy-microos:
 
 module-status:
 	./ops/module_control.sh status all
+
+apply-profile:
+	./ops/apply_runtime_profile.sh $(PROFILE)
+
+list-profiles:
+	./ops/apply_runtime_profile.sh --list
+
+check-consistency:
+	./ops/check_system_consistency.sh
+
+storage-tier:
+	./ops/storage_tier_setup.sh

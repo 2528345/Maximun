@@ -2,6 +2,15 @@
 
 Runtime flow map by module.
 
+## Recommended startup order (8GB)
+
+```bash
+./ops/apply_runtime_profile.sh lenovo330s_stable
+./ops/check_system_consistency.sh || true
+./ops/preflight_host_check.sh
+podman compose up -d
+```
+
 ## Modules (5 runtime + dashboard)
 
 1. `gateway-mqtt`
@@ -37,8 +46,11 @@ Runtime flow map by module.
   - `cognition/rag/query`
   - `cognition/rag/upsert`
   - `cognition/rag/delete`
+  - `cognition/rag/ingest_path`
+  - `cognition/rag/feedback`
 - Query response topic: `cognition/rag/result`
 - Index status topic: `cognition/rag/index/status`
+- Stats topic: `cognition/rag/stats/get` -> `cognition/rag/status`
 
 ## 4) Vision
 
@@ -84,4 +96,10 @@ mosquitto_pub -h localhost -p 1883 -t cognition/rag/upsert -m '{"id":"doc-001","
 
 # Query RAG
 mosquitto_pub -h localhost -p 1883 -t cognition/rag/query -m '{"request_id":"q1","query":"que sistema operativo prefiere el usuario","top_k":3}'
+
+# Ingest all PDF/MD/TXT from docs path
+mosquitto_pub -h localhost -p 1883 -t cognition/rag/ingest_path -m '{"path":"/rag_store/docs","recursive":true}'
+
+# Feedback for RL ranking
+mosquitto_pub -h localhost -p 1883 -t cognition/rag/feedback -m '{"interaction_id":"anonymous_1710000000_q1","feedback_type":"explicit","feedback_value":1.0}'
 ```

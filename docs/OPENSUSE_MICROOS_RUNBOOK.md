@@ -27,6 +27,7 @@ After `transactional-update`, reboot host.
 sudo mkdir -p /opt/maximun/data/models_cache
 sudo mkdir -p /opt/maximun/data/projects
 sudo mkdir -p /opt/maximun/data/rag_store
+sudo mkdir -p /opt/maximun/data/rag_store/docs
 ```
 
 ## 3) Copy required models
@@ -45,8 +46,34 @@ Place these files in `/opt/maximun/data/models_cache`:
 
 ```bash
 cp .env.example .env
+./ops/apply_runtime_profile.sh lenovo330s_stable
+./ops/storage_tier_setup.sh
+./ops/check_system_consistency.sh || true
 ./ops/deploy_microos.sh
 ```
+
+Default deploy in 8GB mode starts only core services.
+To enable optional modules edit `.env`:
+
+- `ENABLE_UI=true`
+- `ENABLE_VISION=true`
+
+For heavier coding sessions:
+
+```bash
+./ops/apply_runtime_profile.sh lenovo330s_engineering
+./ops/storage_tier_setup.sh
+./ops/deploy_microos.sh --profile lenovo330s_engineering
+```
+
+## 4.1) RAG document ingestion path
+
+- Put project knowledge files here:
+  - `/opt/maximun/data/rag_store/docs`
+- Supported formats:
+  - `pdf`, `md`, `markdown`, `txt`, `rst`
+- Trigger ingestion via MQTT topic:
+  - `cognition/rag/ingest_path`
 
 ## 5) Validate module workflow
 

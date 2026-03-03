@@ -46,6 +46,6 @@ def test_critical_mounts_exist() -> None:
     s = compose["services"]
 
     cc_vols = "\n".join(s["cognitive-core"].get("volumes", []))
-    assert "/opt/maximun/data/models_cache:/models_cache:ro" in cc_vols
-    assert "/opt/maximun/data/projects:/output:rw" in cc_vols
-    assert "/opt/maximun/data/rag_store:/rag_store:rw" in cc_vols
+    assert "models_cache:/models_cache:ro" in cc_vols
+    assert "projects:/output:rw" in cc_vols
+    assert "rag_store:/rag_store:rw" in cc_vols

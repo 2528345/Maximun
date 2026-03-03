@@ -61,7 +61,7 @@ compose_up_module() {
       podman compose up -d gateway-mqtt rag-core
       ;;
     dashboard)
-      podman compose up -d gateway-mqtt maximun-dashboard
+      podman compose up -d gateway-mqtt dashboard
       ;;
   esac
 }

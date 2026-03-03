@@ -31,5 +31,8 @@ Keep one coherent offline architecture for openSUSE MicroOS with strict resource
 - Flow: [docs/FLOW_BY_MODULE.md](/root/codex/docs/FLOW_BY_MODULE.md)
 - openSUSE runbook: [docs/OPENSUSE_MICROOS_RUNBOOK.md](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
 - Host preflight: [ops/preflight_host_check.sh](/root/codex/ops/preflight_host_check.sh)
+- Profile apply: [ops/apply_runtime_profile.sh](/root/codex/ops/apply_runtime_profile.sh)
+- Storage tier setup: [ops/storage_tier_setup.sh](/root/codex/ops/storage_tier_setup.sh)
+- Consistency check: [ops/check_system_consistency.sh](/root/codex/ops/check_system_consistency.sh)
 - Module test: [ops/test_by_module.sh](/root/codex/ops/test_by_module.sh)
 - Deploy script: [ops/deploy_microos.sh](/root/codex/ops/deploy_microos.sh)
