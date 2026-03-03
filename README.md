@@ -55,6 +55,8 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
   - `MQTT_TLS_ENABLE=true`
   - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
   - client CA inside services: `MQTT_TLS_CA_CERT=/certs/mqtt/ca.crt`
+- Strong password enforcement (recommended for MVP production):
+  - `MQTT_ENFORCE_STRONG_PASSWORD=true` (rejects default/weak MQTT password on broker startup)
 
 Generate self-signed certs for local testing:
 
@@ -82,6 +84,8 @@ Generate self-signed certs for local testing:
 
 ```bash
 cp .env.example .env
+# Required before preflight/deploy:
+# edit MQTT_PASSWORD in .env (default placeholder is blocked)
 ./ops/apply_runtime_profile.sh lenovo330s_stable
 ./ops/storage_tier_setup.sh
 ./ops/check_system_consistency.sh || true

@@ -49,6 +49,8 @@ Stack de asistente personal **offline-first** para openSUSE MicroOS en Lenovo 33
   - `MQTT_TLS_ENABLE=true`
   - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
   - CA para clientes internos: `MQTT_TLS_CA_CERT=/certs/mqtt/ca.crt`
+- Endurecimiento de clave (recomendado en MVP producción):
+  - `MQTT_ENFORCE_STRONG_PASSWORD=true` (bloquea arranque si la clave MQTT es débil o por defecto)
 
 Generar certificados locales:
 
@@ -79,6 +81,8 @@ Modelos esperados en `models_cache`:
 
 ```bash
 cp .env.example .env
+# Obligatorio antes de preflight/deploy:
+# cambia MQTT_PASSWORD en .env (el placeholder por defecto se bloquea)
 ./ops/apply_runtime_profile.sh lenovo330s_stable
 ./ops/storage_tier_setup.sh
 ./ops/check_system_consistency.sh || true

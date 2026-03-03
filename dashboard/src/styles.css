@@ -63,6 +63,11 @@ body {
   border-color: #d7b35f;
 }
 
+.status-pill.error {
+  color: #f09a45;
+  border-color: #f09a45;
+}
+
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

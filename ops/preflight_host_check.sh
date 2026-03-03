@@ -15,6 +15,8 @@ RAG_RAM_CACHE="/dev/shm/maximun_rag_cache"
 ENABLE_IOT="false"
 MQTT_ALLOW_ANONYMOUS="false"
 MQTT_TLS_ENABLE="false"
+MQTT_ENFORCE_STRONG_PASSWORD="false"
+MQTT_PASSWORD="maximun_local_change_me"
 MQTT_TLS_CA_FILE="/mosquitto/config/certs/ca.crt"
 MQTT_TLS_CERT_FILE="/mosquitto/config/certs/server.crt"
 MQTT_TLS_KEY_FILE="/mosquitto/config/certs/server.key"
@@ -30,6 +32,8 @@ if [[ -f .env ]]; then
   env_mqtt_tls_ca="$(grep '^MQTT_TLS_CA_FILE=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_tls_cert="$(grep '^MQTT_TLS_CERT_FILE=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_tls_key="$(grep '^MQTT_TLS_KEY_FILE=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_enforce_strong="$(grep '^MQTT_ENFORCE_STRONG_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_password="$(grep '^MQTT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
   env_zigbee_port="$(grep '^IOT_ZIGBEE_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
   env_modbus_port="$(grep '^IOT_MODBUS_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
   env_can_channel="$(grep '^IOT_CAN_CHANNEL=' .env | tail -n1 | cut -d= -f2- || true)"
@@ -39,6 +43,8 @@ if [[ -f .env ]]; then
   [[ -n "$env_mqtt_tls_ca" ]] && MQTT_TLS_CA_FILE="$env_mqtt_tls_ca"
   [[ -n "$env_mqtt_tls_cert" ]] && MQTT_TLS_CERT_FILE="$env_mqtt_tls_cert"
   [[ -n "$env_mqtt_tls_key" ]] && MQTT_TLS_KEY_FILE="$env_mqtt_tls_key"
+  [[ -n "$env_mqtt_enforce_strong" ]] && MQTT_ENFORCE_STRONG_PASSWORD="$env_mqtt_enforce_strong"
+  [[ -n "$env_mqtt_password" ]] && MQTT_PASSWORD="$env_mqtt_password"
   [[ -n "$env_zigbee_port" ]] && IOT_ZIGBEE_SERIAL_PORT="$env_zigbee_port"
   [[ -n "$env_modbus_port" ]] && IOT_MODBUS_SERIAL_PORT="$env_modbus_port"
   [[ -n "$env_can_channel" ]] && IOT_CAN_CHANNEL="$env_can_channel"
@@ -156,6 +162,18 @@ if [[ "${MQTT_ALLOW_ANONYMOUS,,}" == "false" ]]; then
   ok "MQTT autenticado (allow_anonymous=false)"
 else
   fail "MQTT anonimo habilitado (recomendado desactivar)"
+fi
+
+if [[ "$MQTT_PASSWORD" == "maximun_local_change_me" || "$MQTT_PASSWORD" == "CAMBIAR_ESTA_CLAVE_SEGURA" ]]; then
+  fail "MQTT_PASSWORD en valor por defecto"
+fi
+
+if [[ "${MQTT_ENFORCE_STRONG_PASSWORD,,}" == "true" ]]; then
+  if [[ "${#MQTT_PASSWORD}" -ge 16 ]]; then
+    ok "MQTT_PASSWORD cumple longitud minima (>=16)"
+  else
+    fail "MQTT_ENFORCE_STRONG_PASSWORD=true pero MQTT_PASSWORD tiene menos de 16 caracteres"
+  fi
 fi
 
 if [[ "${MQTT_TLS_ENABLE,,}" == "true" ]]; then

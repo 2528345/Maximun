@@ -20,6 +20,7 @@ MQTT_TLS_ALLOW_ANONYMOUS="${MQTT_TLS_ALLOW_ANONYMOUS:-false}"
 MQTT_TLS_CA_FILE="${MQTT_TLS_CA_FILE:-${CERTS_DIR}/ca.crt}"
 MQTT_TLS_CERT_FILE="${MQTT_TLS_CERT_FILE:-${CERTS_DIR}/server.crt}"
 MQTT_TLS_KEY_FILE="${MQTT_TLS_KEY_FILE:-${CERTS_DIR}/server.key}"
+MQTT_ENFORCE_STRONG_PASSWORD="${MQTT_ENFORCE_STRONG_PASSWORD:-false}"
 
 need_password_file="false"
 if [ "${MQTT_ALLOW_ANONYMOUS}" != "true" ] || [ "${MQTT_WS_ALLOW_ANONYMOUS}" != "true" ]; then
@@ -30,6 +31,16 @@ if [ "${MQTT_TLS_ENABLE}" = "true" ] && [ "${MQTT_TLS_ALLOW_ANONYMOUS}" != "true
 fi
 
 if [ "${need_password_file}" = "true" ]; then
+  if [ "${MQTT_ENFORCE_STRONG_PASSWORD}" = "true" ]; then
+    if [ "${MQTT_PASSWORD}" = "maximun_local_change_me" ] || [ "${MQTT_PASSWORD}" = "CAMBIAR_ESTA_CLAVE_SEGURA" ]; then
+      echo "[gateway-mqtt] MQTT_PASSWORD sigue en valor por defecto. Cambialo antes de arrancar." >&2
+      exit 2
+    fi
+    if [ "${#MQTT_PASSWORD}" -lt 16 ]; then
+      echo "[gateway-mqtt] MQTT_PASSWORD debe tener al menos 16 caracteres cuando MQTT_ENFORCE_STRONG_PASSWORD=true." >&2
+      exit 2
+    fi
+  fi
   mosquitto_passwd -b -c "${PASS_FILE}" "${MQTT_USERNAME}" "${MQTT_PASSWORD}"
   chmod 600 "${PASS_FILE}"
 fi
@@ -80,4 +91,3 @@ EOF
 fi
 
 exec /usr/sbin/mosquitto -c "${CONF_FILE}"
-

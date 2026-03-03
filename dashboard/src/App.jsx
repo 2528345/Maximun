@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import mqtt from 'mqtt';
 
 const WS_URL = import.meta.env.VITE_MQTT_WS_URL || 'ws://localhost:9001';
+const WS_USERNAME = import.meta.env.VITE_MQTT_USERNAME || '';
+const WS_PASSWORD = import.meta.env.VITE_MQTT_PASSWORD || '';
 
 function safeParse(value) {
   try {
@@ -36,7 +38,15 @@ export default function App() {
   const [lastRagInteractionId, setLastRagInteractionId] = useState('');
 
   useEffect(() => {
-    const client = mqtt.connect(WS_URL);
+    const options = { reconnectPeriod: 2000 };
+    if (WS_USERNAME) {
+      options.username = WS_USERNAME;
+    }
+    if (WS_PASSWORD) {
+      options.password = WS_PASSWORD;
+    }
+
+    const client = mqtt.connect(WS_URL, options);
     clientRef.current = client;
 
     client.on('connect', () => {
@@ -61,6 +71,10 @@ export default function App() {
 
     client.on('close', () => {
       setConnection('Disconnected');
+    });
+
+    client.on('error', () => {
+      setConnection('Error');
     });
 
     client.on('message', (topic, message) => {

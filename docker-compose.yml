@@ -19,6 +19,7 @@ services:
       MQTT_TLS_CA_FILE: "${MQTT_TLS_CA_FILE:-/mosquitto/config/certs/ca.crt}"
       MQTT_TLS_CERT_FILE: "${MQTT_TLS_CERT_FILE:-/mosquitto/config/certs/server.crt}"
       MQTT_TLS_KEY_FILE: "${MQTT_TLS_KEY_FILE:-/mosquitto/config/certs/server.key}"
+      MQTT_ENFORCE_STRONG_PASSWORD: "${MQTT_ENFORCE_STRONG_PASSWORD:-false}"
     ports:
       - "1883:1883"
       - "9001:9001"
@@ -266,6 +267,8 @@ services:
       - gateway-mqtt
     environment:
       VITE_MQTT_WS_URL: ws://localhost:9001
+      VITE_MQTT_USERNAME: "${MQTT_USERNAME:-}"
+      VITE_MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
     ports:
       - "5173:5173"
     mem_limit: 300m

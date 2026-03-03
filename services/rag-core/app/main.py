@@ -392,6 +392,7 @@ class IntelligentRAGDatabase:
             self.ram_cache_path,
         ]:
             path.mkdir(parents=True, exist_ok=True)
+        self.docs_root = self.docs_path.resolve(strict=False)
 
         self.chroma_client: Any | None = None
         self.collection: Any | None = None
@@ -559,17 +560,23 @@ class IntelligentRAGDatabase:
 
         upserted = 0
         failed = 0
+        blocked = 0
         for item in items:
             path_raw = str(item.get("path", "")).strip()
             if path_raw:
-                text = self._extract_text_from_file(Path(path_raw))
+                safe_path = self._resolve_safe_docs_path(path_raw)
+                if safe_path is None:
+                    blocked += 1
+                    failed += 1
+                    continue
+                text = self._extract_text_from_file(safe_path)
                 if not text:
                     failed += 1
                     continue
                 metadata = item.get("metadata", {})
                 if not isinstance(metadata, dict):
                     metadata = {}
-                metadata.update({"path": path_raw, "title": Path(path_raw).name})
+                metadata.update({"path": str(safe_path), "title": safe_path.name})
                 if self.add_document(text, metadata=metadata, source="filesystem"):
                     upserted += 1
                 else:
@@ -590,6 +597,7 @@ class IntelligentRAGDatabase:
             "status": "upserted" if upserted > 0 else "failed",
             "upserted": upserted,
             "failed": failed,
+            "blocked": blocked,
             "total": int(total),
             "timestamp": int(time.time()),
         }
@@ -777,7 +785,17 @@ class IntelligentRAGDatabase:
             }
 
     def ingest_path(self, base_path: str, recursive: bool = True) -> Dict[str, Any]:
-        root = Path(base_path or str(self.docs_path))
+        root = self._resolve_safe_docs_path(base_path or str(self.docs_path))
+        if root is None:
+            return {
+                "status": "blocked_path",
+                "reason": "outside_docs_root",
+                "docs_root": str(self.docs_root),
+                "path": str(base_path),
+                "indexed_files": 0,
+                "failed_files": 0,
+                "timestamp": int(time.time()),
+            }
         if not root.exists():
             return {
                 "status": "missing_path",
@@ -1033,6 +1051,10 @@ class IntelligentRAGDatabase:
         return output
 
     def _extract_text_from_file(self, file_path: Path) -> str:
+        try:
+            file_path.resolve(strict=False).relative_to(self.docs_root)
+        except Exception:
+            return ""
         if not file_path.exists() or not file_path.is_file():
             return ""
 
@@ -1062,6 +1084,17 @@ class IntelligentRAGDatabase:
             return ""
 
         return ""
+
+    def _resolve_safe_docs_path(self, raw_path: str | Path) -> Path | None:
+        try:
+            candidate = Path(raw_path).expanduser().resolve(strict=False)
+        except Exception:
+            return None
+        try:
+            candidate.relative_to(self.docs_root)
+        except Exception:
+            return None
+        return candidate
 
     def _normalize_documents_payload(self, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         docs_obj = payload.get("documents")
