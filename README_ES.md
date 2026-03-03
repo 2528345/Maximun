@@ -94,6 +94,7 @@ Dashboard (si `ENABLE_UI=true`): `http://localhost:5173`
 ./ops/apply_runtime_profile.sh --list
 ./ops/apply_runtime_profile.sh lenovo330s_stable
 ./ops/apply_runtime_profile.sh lenovo330s_engineering
+./ops/apply_runtime_profile.sh lenovo330s_mvp_production
 ```
 
 `deploy_microos.sh` levanta por defecto el núcleo mínimo para mantenerse en 8GB:
@@ -123,6 +124,7 @@ Módulos opcionales por `.env`:
 - [Runbook openSUSE MicroOS](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
 - [Hoja de ruta completa instalación/despliegue](/root/codex/docs/INSTALL_DEPLOY_ROADMAP_V5.1.md)
 - [Flujo por módulo](/root/codex/docs/FLOW_BY_MODULE.md)
+- [Checklist MVP producción](/root/codex/docs/MVP_PRODUCTION_CHECKLIST_ES.md)
 
 ## Estado del proyecto
 

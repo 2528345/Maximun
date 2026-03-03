@@ -4,6 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = [
     ROOT / "config/runtime_profiles/lenovo330s_stable.env",
     ROOT / "config/runtime_profiles/lenovo330s_engineering.env",
+    ROOT / "config/runtime_profiles/lenovo330s_mvp_production.env",
 ]
 
 REQUIRED_KEYS = {

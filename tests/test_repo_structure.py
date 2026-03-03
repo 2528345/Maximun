@@ -17,6 +17,7 @@ REQUIRED_FILES = [
     "ops/generate_mqtt_tls_certs.sh",
     "config/runtime_profiles/lenovo330s_stable.env",
     "config/runtime_profiles/lenovo330s_engineering.env",
+    "config/runtime_profiles/lenovo330s_mvp_production.env",
     "services/cognitive-core/app/main.py",
     "services/audio-interface/app/main.py",
     "services/vision-cortex/app/main.py",
@@ -29,6 +30,7 @@ REQUIRED_FILES = [
     "gateway-mqtt/entrypoint.sh",
     "gateway-mqtt/mosquitto.conf",
     "docs/INSTALL_DEPLOY_ROADMAP_V5.1.md",
+    "docs/MVP_PRODUCTION_CHECKLIST_ES.md",
 ]
 
 

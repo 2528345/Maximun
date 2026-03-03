@@ -118,6 +118,9 @@ For openSUSE MicroOS host preparation, follow:
 
 # Engineering mode (heavier GLM/DeepSeek cycle)
 ./ops/apply_runtime_profile.sh lenovo330s_engineering
+
+# MVP production baseline (secure defaults + TLS intended)
+./ops/apply_runtime_profile.sh lenovo330s_mvp_production
 ```
 
 Run consistency check after switching profile:

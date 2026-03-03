@@ -15,6 +15,7 @@ Uso:
 Perfiles disponibles:
   lenovo330s_stable
   lenovo330s_engineering
+  lenovo330s_mvp_production
 USAGE
 }
 
