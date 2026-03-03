@@ -69,6 +69,10 @@ podman compose ps
 
 Dashboard: `http://localhost:5173`
 
+For openSUSE MicroOS host preparation, follow:
+
+- [docs/OPENSUSE_MICROOS_RUNBOOK.md](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
+
 ## Module tests
 
 ```bash
@@ -76,6 +80,18 @@ Dashboard: `http://localhost:5173`
 ./ops/mqtt_smoke_test.sh
 ./ops/test_by_module.sh
 ```
+
+## Repo coverage checklist
+
+- Configuration: `docker-compose.yml`, `.env.example`, `gateway-mqtt/mosquitto.conf`
+- Code: `services/*/app/main.py`
+- Tests:
+  - contract tests in `tests/`
+  - smoke/module tests in `ops/`
+- Deployment scripts:
+  - `ops/microos_bootstrap.sh`
+  - `ops/deploy_microos.sh`
+  - `ops/module_control.sh`
 
 ## Flow and troubleshooting
 

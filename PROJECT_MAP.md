@@ -29,5 +29,7 @@ Keep one coherent offline architecture for openSUSE MicroOS with strict resource
 
 - Compose: [docker-compose.yml](/root/codex/docker-compose.yml)
 - Flow: [docs/FLOW_BY_MODULE.md](/root/codex/docs/FLOW_BY_MODULE.md)
+- openSUSE runbook: [docs/OPENSUSE_MICROOS_RUNBOOK.md](/root/codex/docs/OPENSUSE_MICROOS_RUNBOOK.md)
 - Host preflight: [ops/preflight_host_check.sh](/root/codex/ops/preflight_host_check.sh)
 - Module test: [ops/test_by_module.sh](/root/codex/ops/test_by_module.sh)
+- Deploy script: [ops/deploy_microos.sh](/root/codex/ops/deploy_microos.sh)

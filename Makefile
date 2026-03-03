@@ -1,4 +1,4 @@
-.PHONY: up down build logs ps preflight self-test smoke test-modules
+.PHONY: up down build logs ps preflight self-test smoke test-modules bootstrap-microos deploy-microos module-status
 
 build:
 	podman compose build
@@ -26,3 +26,12 @@ smoke:
 
 test-modules:
 	./ops/test_by_module.sh
+
+bootstrap-microos:
+	./ops/microos_bootstrap.sh
+
+deploy-microos:
+	./ops/deploy_microos.sh
+
+module-status:
+	./ops/module_control.sh status all
