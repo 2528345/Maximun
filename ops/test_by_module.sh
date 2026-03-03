@@ -3,6 +3,15 @@ set -euo pipefail
 
 BROKER_CONTAINER="${BROKER_CONTAINER:-gateway-mqtt}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-12}"
+MQTT_USER="${MQTT_USER:-}"
+MQTT_PASS="${MQTT_PASS:-}"
+
+if [[ -f .env ]]; then
+  env_mqtt_user="$(grep '^MQTT_USERNAME=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_pass="$(grep '^MQTT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_mqtt_user" ]] && MQTT_USER="$env_mqtt_user"
+  [[ -n "$env_mqtt_pass" ]] && MQTT_PASS="$env_mqtt_pass"
+fi
 
 pass=0
 warn=0
@@ -30,15 +39,29 @@ need timeout
 mqtt_wait_topic() {
   local topic="$1"
   local out_file="$2"
+  local auth_args=""
+  if [[ -n "$MQTT_USER" ]]; then
+    auth_args="$auth_args -u '$MQTT_USER'"
+  fi
+  if [[ -n "$MQTT_PASS" ]]; then
+    auth_args="$auth_args -P '$MQTT_PASS'"
+  fi
   timeout "$TIMEOUT_SEC" podman exec "$BROKER_CONTAINER" sh -c \
-    "mosquitto_sub -h localhost -p 1883 -t '$topic' -C 1 -W $TIMEOUT_SEC" >"$out_file" 2>&1
+    "mosquitto_sub -h localhost -p 1883 ${auth_args} -t '$topic' -C 1 -W $TIMEOUT_SEC" >"$out_file" 2>&1
 }
 
 mqtt_pub() {
   local topic="$1"
   local payload="$2"
+  local auth_args=""
+  if [[ -n "$MQTT_USER" ]]; then
+    auth_args="$auth_args -u '$MQTT_USER'"
+  fi
+  if [[ -n "$MQTT_PASS" ]]; then
+    auth_args="$auth_args -P '$MQTT_PASS'"
+  fi
   podman exec "$BROKER_CONTAINER" sh -c \
-    "mosquitto_pub -h localhost -p 1883 -t '$topic' -m '$payload'"
+    "mosquitto_pub -h localhost -p 1883 ${auth_args} -t '$topic' -m '$payload'"
 }
 
 service_running() {
@@ -115,10 +138,17 @@ else
 fi
 
 (
+  auth_args=""
+  if [[ -n "$MQTT_USER" ]]; then
+    auth_args="$auth_args -u '$MQTT_USER'"
+  fi
+  if [[ -n "$MQTT_PASS" ]]; then
+    auth_args="$auth_args -P '$MQTT_PASS'"
+  fi
   timeout "$TIMEOUT_SEC" podman exec "$BROKER_CONTAINER" sh -c \
-    "mosquitto_sub -h localhost -p 1883 -t 'perception/vision/analysis_result' -C 1 -W $TIMEOUT_SEC" >"$out5" 2>&1 || \
+    "mosquitto_sub -h localhost -p 1883 ${auth_args} -t 'perception/vision/analysis_result' -C 1 -W $TIMEOUT_SEC" >"$out5" 2>&1 || \
   timeout "$TIMEOUT_SEC" podman exec "$BROKER_CONTAINER" sh -c \
-    "mosquitto_sub -h localhost -p 1883 -t 'perception/vision/analysis_skipped' -C 1 -W $TIMEOUT_SEC" >"$out5" 2>&1
+    "mosquitto_sub -h localhost -p 1883 ${auth_args} -t 'perception/vision/analysis_skipped' -C 1 -W $TIMEOUT_SEC" >"$out5" 2>&1
 ) &
 sub_pid=$!
 sleep 1

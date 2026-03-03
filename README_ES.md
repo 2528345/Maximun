@@ -39,6 +39,22 @@ Stack de asistente personal **offline-first** para openSUSE MicroOS en Lenovo 33
 - `iot-gateway`: 220MB / 0.35 CPU (opcional)
 - `gateway-mqtt`: 100MB / 0.1 CPU
 
+## Seguridad MQTT (autenticación + TLS)
+
+- El broker arranca autenticado por defecto (`MQTT_ALLOW_ANONYMOUS=false`).
+- Credenciales en `.env`:
+  - `MQTT_USERNAME`
+  - `MQTT_PASSWORD`
+- TLS opcional en puerto `8883`:
+  - `MQTT_TLS_ENABLE=true`
+  - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
+
+Generar certificados locales:
+
+```bash
+./ops/generate_mqtt_tls_certs.sh
+```
+
 ## Estructura de datos en host
 
 ```bash

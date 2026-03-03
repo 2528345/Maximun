@@ -4,6 +4,8 @@ set -euo pipefail
 DATA_ROOT="/opt/maximun/data"
 MQTT_HOST="localhost"
 MQTT_PORT="1883"
+MQTT_USER="${MQTT_USER:-}"
+MQTT_PASS="${MQTT_PASS:-}"
 
 if [[ -f .env ]]; then
   env_data_root="$(grep '^MAXIMUN_DATA_ROOT=' .env | tail -n1 | cut -d= -f2- || true)"
@@ -14,6 +16,11 @@ if [[ -f .env ]]; then
 
   env_mqtt_port="$(grep '^MQTT_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
   [[ -n "$env_mqtt_port" ]] && MQTT_PORT="$env_mqtt_port"
+
+  env_mqtt_user="$(grep '^MQTT_USERNAME=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_pass="$(grep '^MQTT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_mqtt_user" ]] && MQTT_USER="$env_mqtt_user"
+  [[ -n "$env_mqtt_pass" ]] && MQTT_PASS="$env_mqtt_pass"
 fi
 
 MODELS_ROOT="${DATA_ROOT}/models_cache"
@@ -113,7 +120,14 @@ fi
 
 echo "[self-test] Broker MQTT publish smoke..."
 if command -v podman >/dev/null 2>&1; then
-  if podman exec gateway-mqtt sh -c 'mosquitto_pub -h localhost -p 1883 -t health/ping -m ok'; then
+  auth_args=""
+  if [[ -n "$MQTT_USER" ]]; then
+    auth_args="$auth_args -u '$MQTT_USER'"
+  fi
+  if [[ -n "$MQTT_PASS" ]]; then
+    auth_args="$auth_args -P '$MQTT_PASS'"
+  fi
+  if podman exec gateway-mqtt sh -c "mosquitto_pub -h localhost -p ${MQTT_PORT} ${auth_args} -t health/ping -m ok"; then
     echo "  OK  publish test"
   else
     echo "  WARN no se pudo publicar en broker"

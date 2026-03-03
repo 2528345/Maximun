@@ -15,6 +15,7 @@ if ! command -v podman >/dev/null 2>&1; then
 fi
 
 mkdir -p "$ROOT_DIR/config/signatures"
+mkdir -p "$ROOT_DIR/gateway-mqtt/certs"
 
 if [[ ! -f .env ]]; then
   cp .env.example .env

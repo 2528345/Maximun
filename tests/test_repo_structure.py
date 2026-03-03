@@ -14,6 +14,7 @@ REQUIRED_FILES = [
     "ops/microos_bootstrap.sh",
     "ops/deploy_microos.sh",
     "ops/module_control.sh",
+    "ops/generate_mqtt_tls_certs.sh",
     "config/runtime_profiles/lenovo330s_stable.env",
     "config/runtime_profiles/lenovo330s_engineering.env",
     "services/cognitive-core/app/main.py",
@@ -24,6 +25,8 @@ REQUIRED_FILES = [
     "services/iot-gateway/app/main.py",
     "services/iot-gateway/requirements.txt",
     "services/iot-gateway/Dockerfile",
+    "gateway-mqtt/Dockerfile",
+    "gateway-mqtt/entrypoint.sh",
     "gateway-mqtt/mosquitto.conf",
     "docs/INSTALL_DEPLOY_ROADMAP_V5.1.md",
 ]

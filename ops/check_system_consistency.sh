@@ -65,8 +65,11 @@ file_must_exist "services/iot-gateway/app/main.py"
 file_must_exist "ops/preflight_host_check.sh"
 file_must_exist "ops/storage_tier_setup.sh"
 file_must_exist "ops/test_by_module.sh"
+file_must_exist "ops/generate_mqtt_tls_certs.sh"
 file_must_exist "config/runtime_profiles/lenovo330s_stable.env"
 file_must_exist "config/runtime_profiles/lenovo330s_engineering.env"
+file_must_exist "gateway-mqtt/Dockerfile"
+file_must_exist "gateway-mqtt/entrypoint.sh"
 
 echo
 echo "== Servicios esperados =="

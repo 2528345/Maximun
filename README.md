@@ -45,6 +45,22 @@ See [docs/LEGACY_DISCARDED.md](/root/codex/docs/LEGACY_DISCARDED.md).
 - `iot-gateway`: 220MB / 0.35 CPU (optional)
 - `gateway-mqtt`: 100MB / 0.1 CPU
 
+## MQTT security (auth + TLS)
+
+- Broker now starts with authenticated MQTT by default (`MQTT_ALLOW_ANONYMOUS=false`).
+- Credentials are controlled from `.env`:
+  - `MQTT_USERNAME`
+  - `MQTT_PASSWORD`
+- Optional TLS listener (`8883`) can be enabled with:
+  - `MQTT_TLS_ENABLE=true`
+  - `MQTT_TLS_CA_FILE`, `MQTT_TLS_CERT_FILE`, `MQTT_TLS_KEY_FILE`
+
+Generate self-signed certs for local testing:
+
+```bash
+./ops/generate_mqtt_tls_certs.sh
+```
+
 ## Host data layout
 
 ```bash

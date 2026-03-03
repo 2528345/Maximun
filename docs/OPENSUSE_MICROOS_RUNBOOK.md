@@ -46,6 +46,7 @@ Place these files in `/opt/maximun/data/models_cache`:
 
 ```bash
 cp .env.example .env
+./ops/generate_mqtt_tls_certs.sh   # opcional, si usaras MQTT_TLS_ENABLE=true
 ./ops/apply_runtime_profile.sh lenovo330s_stable
 ./ops/storage_tier_setup.sh
 ./ops/check_system_consistency.sh || true

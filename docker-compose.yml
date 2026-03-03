@@ -2,14 +2,29 @@ version: "3.9"
 
 services:
   gateway-mqtt:
-    image: eclipse-mosquitto:2
+    build:
+      context: ./gateway-mqtt
     container_name: gateway-mqtt
     restart: unless-stopped
+    environment:
+      MQTT_PORT: "${MQTT_PORT:-1883}"
+      MQTT_WS_PORT: "${MQTT_WS_PORT:-9001}"
+      MQTT_TLS_PORT: "${MQTT_TLS_PORT:-8883}"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_ALLOW_ANONYMOUS: "${MQTT_ALLOW_ANONYMOUS:-false}"
+      MQTT_WS_ALLOW_ANONYMOUS: "${MQTT_WS_ALLOW_ANONYMOUS:-false}"
+      MQTT_TLS_ENABLE: "${MQTT_TLS_ENABLE:-false}"
+      MQTT_TLS_ALLOW_ANONYMOUS: "${MQTT_TLS_ALLOW_ANONYMOUS:-false}"
+      MQTT_TLS_CA_FILE: "${MQTT_TLS_CA_FILE:-/mosquitto/config/certs/ca.crt}"
+      MQTT_TLS_CERT_FILE: "${MQTT_TLS_CERT_FILE:-/mosquitto/config/certs/server.crt}"
+      MQTT_TLS_KEY_FILE: "${MQTT_TLS_KEY_FILE:-/mosquitto/config/certs/server.key}"
     ports:
       - "1883:1883"
       - "9001:9001"
+      - "8883:8883"
     volumes:
-      - ./gateway-mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./gateway-mqtt/certs:/mosquitto/config/certs:ro
       - shared_logs:/logs
     mem_limit: 100m
     cpus: "0.10"
@@ -25,6 +40,13 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
+      MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
+      MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
+      MQTT_TLS_CLIENT_KEY: "${MQTT_TLS_CLIENT_KEY:-}"
+      MQTT_TLS_INSECURE: "${MQTT_TLS_INSECURE:-false}"
       RAM_BUDGET_MB: "${RAM_BUDGET_MB:-8192}"
       RESERVE_RAM_MB: "${RESERVE_RAM_MB:-512}"
       LLM_THREADS: "${LLM_THREADS:-4}"
@@ -80,6 +102,13 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
+      MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
+      MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
+      MQTT_TLS_CLIENT_KEY: "${MQTT_TLS_CLIENT_KEY:-}"
+      MQTT_TLS_INSECURE: "${MQTT_TLS_INSECURE:-false}"
       YOLO_MODEL_PATH: /models_cache/yolov8n.onnx
       YOLO_CONF_THRESHOLD: "${YOLO_CONF_THRESHOLD:-0.35}"
       YOLO_IOU_THRESHOLD: "${YOLO_IOU_THRESHOLD:-0.45}"
@@ -113,6 +142,13 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
+      MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
+      MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
+      MQTT_TLS_CLIENT_KEY: "${MQTT_TLS_CLIENT_KEY:-}"
+      MQTT_TLS_INSECURE: "${MQTT_TLS_INSECURE:-false}"
       FASTER_WHISPER_MODEL: "${FASTER_WHISPER_MODEL:-small}"
       FASTER_WHISPER_COMPUTE_TYPE: "${FASTER_WHISPER_COMPUTE_TYPE:-int8}"
       FASTER_WHISPER_DEVICE: "${FASTER_WHISPER_DEVICE:-cpu}"
@@ -147,6 +183,13 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
+      MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
+      MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
+      MQTT_TLS_CLIENT_KEY: "${MQTT_TLS_CLIENT_KEY:-}"
+      MQTT_TLS_INSECURE: "${MQTT_TLS_INSECURE:-false}"
       ENABLE_IOT: "${ENABLE_IOT:-false}"
       IOT_SIMULATION: "${IOT_SIMULATION:-true}"
       IOT_ENABLE_BLUETOOTH: "${IOT_ENABLE_BLUETOOTH:-true}"
@@ -178,6 +221,13 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
+      MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
+      MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
+      MQTT_TLS_CLIENT_KEY: "${MQTT_TLS_CLIENT_KEY:-}"
+      MQTT_TLS_INSECURE: "${MQTT_TLS_INSECURE:-false}"
       RAG_CHROMA_PATH: /rag_store/chroma
       RAG_STORAGE_ROOT: "${RAG_STORAGE_ROOT:-/rag_store}"
       RAG_DOCS_PATH: "${RAG_DOCS_PATH:-/rag_store/docs}"

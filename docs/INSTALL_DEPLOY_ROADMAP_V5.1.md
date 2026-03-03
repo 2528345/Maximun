@@ -29,6 +29,12 @@ cd /root/codex
 ./ops/host_permissions.sh
 ```
 
+4. (Opcional) generar certificados TLS para MQTT:
+
+```bash
+./ops/generate_mqtt_tls_certs.sh
+```
+
 ## 2) Estrategia de almacenamiento (SSD 256GB + HDD 1TB)
 
 Recomendado para 8GB RAM:
@@ -98,6 +104,18 @@ cp .env.example .env
 - `ENABLE_UI=true` para dashboard
 - `ENABLE_VISION=true` para vision
 - `ENABLE_IOT=true` para iot-gateway
+
+5. Seguridad MQTT recomendada:
+
+- `MQTT_ALLOW_ANONYMOUS=false`
+- `MQTT_WS_ALLOW_ANONYMOUS=false`
+- definir `MQTT_USERNAME` y `MQTT_PASSWORD`
+- para TLS:
+  - `MQTT_TLS_ENABLE=true`
+  - `MQTT_CLIENT_TLS_ENABLE=true`
+  - `MQTT_TLS_CA_FILE=/mosquitto/config/certs/ca.crt`
+  - `MQTT_TLS_CERT_FILE=/mosquitto/config/certs/server.crt`
+  - `MQTT_TLS_KEY_FILE=/mosquitto/config/certs/server.key`
 
 ## 5) Chequeos previos obligatorios
 

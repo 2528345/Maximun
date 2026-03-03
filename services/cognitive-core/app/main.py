@@ -213,6 +213,13 @@ class CognitiveCore:
     def __init__(self) -> None:
         self.mqtt_host = os.getenv("MQTT_HOST", "localhost")
         self.mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
+        self.mqtt_username = os.getenv("MQTT_USERNAME", "")
+        self.mqtt_password = os.getenv("MQTT_PASSWORD", "")
+        self.mqtt_tls_enable = os.getenv("MQTT_TLS_ENABLE", "false").lower() == "true"
+        self.mqtt_tls_ca_cert = os.getenv("MQTT_TLS_CA_CERT", "")
+        self.mqtt_tls_client_cert = os.getenv("MQTT_TLS_CLIENT_CERT", "")
+        self.mqtt_tls_client_key = os.getenv("MQTT_TLS_CLIENT_KEY", "")
+        self.mqtt_tls_insecure = os.getenv("MQTT_TLS_INSECURE", "false").lower() == "true"
 
         self.resource = ResourceController(
             ram_budget_mb=int(os.getenv("RAM_BUDGET_MB", "8192")),
@@ -292,6 +299,7 @@ class CognitiveCore:
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
+        self._configure_mqtt_security()
 
         self.audit_prompt = (
             "Actua como un Auditor Senior de Seguridad y QA. "
@@ -335,6 +343,18 @@ class CognitiveCore:
 
     def stop(self) -> None:
         self.stop_event.set()
+
+    def _configure_mqtt_security(self) -> None:
+        if self.mqtt_username:
+            self.client.username_pw_set(self.mqtt_username, self.mqtt_password)
+
+        if self.mqtt_tls_enable:
+            self.client.tls_set(
+                ca_certs=self.mqtt_tls_ca_cert or None,
+                certfile=self.mqtt_tls_client_cert or None,
+                keyfile=self.mqtt_tls_client_key or None,
+            )
+            self.client.tls_insecure_set(self.mqtt_tls_insecure)
 
     def on_connect(self, client: mqtt.Client, userdata, flags, reason_code, properties) -> None:
         self.mqtt_connected = True
