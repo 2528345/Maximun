@@ -1,0 +1,87 @@
+# MAXIMUN V5.1 - Flow By Module
+
+Runtime flow map by module.
+
+## Modules (5 runtime + dashboard)
+
+1. `gateway-mqtt`
+2. `cognitive-core`
+3. `audio-interface`
+4. `vision-cortex`
+5. `rag-core`
+6. `dashboard` (UI)
+
+## 1) Audio input
+
+- `audio-interface` captures mic (`arecord`) and runs Faster-Whisper.
+- Publishes transcription to `perception/audio/transcription`.
+
+## 2) Cognitive orchestration
+
+- `cognitive-core` reads `perception/audio/transcription`.
+- If simple: Qwen (L1) responds directly.
+- If complex: starts engineering duel.
+
+### Engineering duel sequence
+
+1. Publish `system/resource/pause` (`pause=true`).
+2. Query `rag-core` via `cognition/rag/query` for extra context.
+3. Load GLM-4 and generate draft -> `project/engineering/draft`.
+4. Swap to DeepSeek for audit -> `cognition/thought/trace`.
+5. Swap back to GLM-4 and apply mandatory changes -> `action/engineering/final`.
+6. Return to Qwen and publish `system/resource/pause` (`pause=false`).
+
+## 3) RAG memory
+
+- `rag-core` subscribes to:
+  - `cognition/rag/query`
+  - `cognition/rag/upsert`
+  - `cognition/rag/delete`
+- Query response topic: `cognition/rag/result`
+- Index status topic: `cognition/rag/index/status`
+
+## 4) Vision
+
+- `vision-cortex` runs YOLO reflex loop and publishes low-priority detections.
+- On `perception/vision/request_analysis`, runs Moondream2 only if RAM interlock allows.
+- Sends result via `perception/vision/analysis_result`.
+
+## 5) Audio output
+
+- `audio-interface` consumes `action/speech/request`.
+- Uses Piper + `aplay` and publishes `action/speech/played`.
+
+## 6) Observability topics
+
+- Ready:
+  - `system/brain/ready`
+  - `system/audio/ready`
+  - `system/vision/ready`
+  - `system/rag/ready`
+- Resource:
+  - `system/resource/status`
+  - `system/resource/throttle`
+  - `system/resource/failsafe`
+- Errors:
+  - `system/error`
+
+## 7) Debug commands
+
+```bash
+# Watch resource/error traffic
+mosquitto_sub -h localhost -p 1883 -t 'system/#' -v
+
+# Watch engineering duel
+mosquitto_sub -h localhost -p 1883 -t 'project/engineering/draft' -v
+mosquitto_sub -h localhost -p 1883 -t 'cognition/thought/trace' -v
+mosquitto_sub -h localhost -p 1883 -t 'action/engineering/final' -v
+
+# Trigger complex prompt
+mosquitto_pub -h localhost -p 1883 -t perception/audio/transcription -m '{"text":"genera un script de backup con logs"}'
+
+# Add RAG memory chunk
+mosquitto_pub -h localhost -p 1883 -t cognition/rag/upsert -m '{"id":"doc-001","text":"El usuario prefiere openSUSE MicroOS y flujo offline","metadata":{"source":"manual"}}'
+
+# Query RAG
+mosquitto_pub -h localhost -p 1883 -t cognition/rag/query -m '{"request_id":"q1","query":"que sistema operativo prefiere el usuario","top_k":3}'
+```

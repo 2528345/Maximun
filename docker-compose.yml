@@ -1,248 +1,157 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  # ============================================================================
-  # MQTT BROKER - Corazón del sistema
-  # ============================================================================
-  mqtt:
-    image: eclipse-mosquitto:latest
-    container_name: vr-assistant-mqtt
+  gateway-mqtt:
+    image: eclipse-mosquitto:2
+    container_name: gateway-mqtt
+    restart: unless-stopped
     ports:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - mqtt_data:/mosquitto/data
-      - mqtt_logs:/mosquitto/log
-    networks:
-      - vr-network
-    healthcheck:
-      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "$SYS/#", "-C", "1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
+      - ./gateway-mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - shared_logs:/logs
+    mem_limit: 100m
+    cpus: "0.10"
 
-  # ============================================================================
-  # AUDIO SERVICE - STT/TTS
-  # ============================================================================
-  audio_service:
+  cognitive-core:
     build:
-      context: ./services/audio
-      dockerfile: Dockerfile
-    container_name: vr-assistant-audio
-    ports:
-      - "8001:8001"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
-    depends_on:
-      mqtt:
-        condition: service_healthy
-    volumes:
-      - ./data/models:/app/data/models
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
+      context: ./services/cognitive-core
+    container_name: cognitive-core
     restart: unless-stopped
-
-  # ============================================================================
-  # VISION SERVICE - Reconocimiento facial
-  # ============================================================================
-  vision_service:
-    build:
-      context: ./services/vision
-      dockerfile: Dockerfile
-    container_name: vr-assistant-vision
-    ports:
-      - "8002:8002"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
     depends_on:
-      mqtt:
-        condition: service_healthy
+      - gateway-mqtt
+      - rag-core
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      RAM_BUDGET_MB: "8192"
+      RESERVE_RAM_MB: "512"
+      LLM_THREADS: "4"
+      LLM_BATCH: "256"
+      QWEN_MODEL_PATH: /models_cache/qwen-2.5-1.5b-instruct.gguf
+      QWEN_CTX: "2048"
+      QWEN_N_GPU_LAYERS: "${QWEN_N_GPU_LAYERS:-0}"
+      QWEN_TEMPERATURE: "0.3"
+      DEEPSEEK_MODEL_PATH: /models_cache/deepseek-r1-distill-qwen-1.5b.gguf
+      DEEPSEEK_CTX: "2048"
+      DEEPSEEK_N_GPU_LAYERS: "${DEEPSEEK_N_GPU_LAYERS:-0}"
+      DEEPSEEK_TEMPERATURE: "0.1"
+      GLM_MODEL_PATH: /models_cache/glm-4-9b-chat-iq4_xs.gguf
+      GLM_CTX: "4096"
+      GLM_N_GPU_LAYERS: "${GLM_N_GPU_LAYERS:-0}"
+      GLM_TEMPERATURE: "0.2"
+      RAG_ENABLED: "${RAG_ENABLED:-true}"
+      RAG_QUERY_TIMEOUT_SEC: "${RAG_QUERY_TIMEOUT_SEC:-4.0}"
+      RAG_QUERY_TOPIC: "${RAG_QUERY_TOPIC:-cognition/rag/query}"
+      RAG_RESULT_TOPIC: "${RAG_RESULT_TOPIC:-cognition/rag/result}"
+      MASTER_HASH: ${MASTER_HASH:-INSERT_MASTER_HASH_HERE}
     volumes:
-      - ./data/models:/app/data/models
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
+      - /opt/maximun/data/models_cache:/models_cache:ro
+      - /opt/maximun/data/projects:/output:rw
+      - /opt/maximun/data/rag_store:/rag_store:rw
+      - ./config/signatures:/opt/maximun/config/signatures:rw
+      - shared_logs:/logs
+    mem_limit: 6500m
+    cpus: "3.50"
+
+  vision-cortex:
+    build:
+      context: ./services/vision-cortex
+    container_name: vision-cortex
     restart: unless-stopped
-
-  # ============================================================================
-  # FILTER SERVICE - TinyLlama 1.1B
-  # ============================================================================
-  filter_service:
-    build:
-      context: ./services/filter
-      dockerfile: Dockerfile
-    container_name: vr-assistant-filter
-    ports:
-      - "8003:8003"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
     depends_on:
-      mqtt:
-        condition: service_healthy
-    volumes:
-      - ./data/models:/app/data/models
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # REASONING SERVICE - Phi-3 + HMR-ACT
-  # ============================================================================
-  reasoning_service:
-    build:
-      context: ./services/reasoning
-      dockerfile: Dockerfile
-    container_name: vr-assistant-reasoning
-    ports:
-      - "8004:8004"
+      - gateway-mqtt
+      - cognitive-core
     environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
-    depends_on:
-      mqtt:
-        condition: service_healthy
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      YOLO_MODEL_PATH: /models_cache/yolov8n.onnx
+      YOLO_CONF_THRESHOLD: "0.35"
+      YOLO_IOU_THRESHOLD: "0.45"
+      MOONDREAM_MODEL_PATH: /models_cache/moondream2-text-model-f16.gguf
+      MOONDREAM_MMPROJ_PATH: /models_cache/moondream2-mmproj-f16.gguf
+      MOONDREAM_ENABLED: "true"
+      MOONDREAM_CTX: "2048"
+      MOONDREAM_N_GPU_LAYERS: "${MOONDREAM_N_GPU_LAYERS:-0}"
+      RAM_INTERLOCK_MB: "1536"
+      VISION_REFLEX_INTERVAL_SEC: "2"
+      CAMERA_INDEX: "0"
     volumes:
-      - ./data/models:/app/data/models
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # RAG SERVICE - ChromaDB
-  # ============================================================================
-  rag_service:
-    build:
-      context: ./services/rag
-      dockerfile: Dockerfile
-    container_name: vr-assistant-rag
-    ports:
-      - "8005:8005"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
-    depends_on:
-      mqtt:
-        condition: service_healthy
-    volumes:
-      - ./data/rag_db:/app/rag_db
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # HARDWARE SERVICE - Control de dispositivos
-  # ============================================================================
-  hardware_service:
-    build:
-      context: ./services/hardware
-      dockerfile: Dockerfile
-    container_name: vr-assistant-hardware
-    ports:
-      - "8006:8006"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
-    depends_on:
-      mqtt:
-        condition: service_healthy
-    volumes:
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
+      - /opt/maximun/data/models_cache:/models_cache:ro
+      - shared_logs:/logs
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0  # Puerto serial
-    privileged: true
-    restart: unless-stopped
+      - /dev/video0:/dev/video0
+    mem_limit: 800m
+    cpus: "0.50"
 
-  # ============================================================================
-  # LEARNING SERVICE - Motor de aprendizaje
-  # ============================================================================
-  learning_service:
+  audio-interface:
     build:
-      context: ./services/learning
-      dockerfile: Dockerfile
-    container_name: vr-assistant-learning
-    ports:
-      - "8007:8007"
-    environment:
-      - MQTT_HOST=mqtt
-      - MQTT_PORT=1883
-      - LOG_LEVEL=INFO
+      context: ./services/audio-interface
+    container_name: audio-interface
+    restart: unless-stopped
     depends_on:
-      mqtt:
-        condition: service_healthy
-    volumes:
-      - ./data/learning_db:/app/learning_db
-      - ./data/logs:/app/logs
-    networks:
-      - vr-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # PROMETHEUS - Monitoreo
-  # ============================================================================
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: vr-assistant-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    networks:
-      - vr-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # GRAFANA - Visualización
-  # ============================================================================
-  grafana:
-    image: grafana/grafana:latest
-    container_name: vr-assistant-grafana
-    ports:
-      - "3000:3000"
+      - gateway-mqtt
+      - cognitive-core
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SECURITY_ADMIN_USER=admin
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      FASTER_WHISPER_MODEL: small
+      FASTER_WHISPER_COMPUTE_TYPE: int8
+      FASTER_WHISPER_DEVICE: cpu
+      STT_CPU_THREADS: "4"
+      STT_LANGUAGE: es
+      STT_MIN_CHARS: "3"
+      ENABLE_STT_MIC: "true"
+      ARECORD_DEVICE: default
+      ARECORD_SECONDS: "4"
+      PIPER_VOICE_PATH: /models_cache/es_ES-sharvard-medium.onnx
+      PIPER_BIN: piper
+      APLAY_BIN: aplay
+      TTS_COOLDOWN_SEC: "1.2"
+      ENABLE_STT_SIMULATOR: "false"
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-    depends_on:
-      - prometheus
-    networks:
-      - vr-network
-    restart: unless-stopped
+      - /opt/maximun/data/models_cache:/models_cache:ro
+      - shared_logs:/logs
+    devices:
+      - /dev/snd:/dev/snd
+      - /dev/shm:/dev/shm
+    mem_limit: 600m
+    cpus: "0.50"
 
-# ============================================================================
-# VOLÚMENES
-# ============================================================================
+  rag-core:
+    build:
+      context: ./services/rag-core
+    container_name: rag-core
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+    environment:
+      MQTT_HOST: gateway-mqtt
+      MQTT_PORT: "1883"
+      RAG_CHROMA_PATH: /rag_store/chroma
+      RAG_COLLECTION: maximun_memory
+      RAG_TOP_K: "4"
+      RAG_MAX_DOC_CHARS: "6000"
+    volumes:
+      - /opt/maximun/data/rag_store:/rag_store:rw
+      - shared_logs:/logs
+    mem_limit: 700m
+    cpus: "0.50"
+
+  dashboard:
+    build:
+      context: ./dashboard
+    container_name: maximun-dashboard
+    restart: unless-stopped
+    depends_on:
+      - gateway-mqtt
+    environment:
+      VITE_MQTT_WS_URL: ws://localhost:9001
+    ports:
+      - "5173:5173"
+    mem_limit: 300m
+    cpus: "0.30"
+
 volumes:
-  mqtt_data:
-  mqtt_logs:
-  prometheus_data:
-  grafana_data:
-
-# ============================================================================
-# REDES
-# ============================================================================
-networks:
-  vr-network:
-    driver: bridge
+  shared_logs:
