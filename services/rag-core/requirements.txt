@@ -4,3 +4,4 @@ pypdf==5.1.0
 numpy==1.26.4
 cryptography==44.0.1
 phe==1.5.0
+sentence-transformers==3.2.1

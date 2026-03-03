@@ -97,6 +97,8 @@ Dashboard (si `ENABLE_UI=true`): `http://localhost:5173`
 ./ops/apply_runtime_profile.sh lenovo330s_mvp_production
 ```
 
+`lenovo330s_mvp_production` usa embeddings semánticos (`sentence-transformers`) en RAG.
+
 `deploy_microos.sh` levanta por defecto el núcleo mínimo para mantenerse en 8GB:
 
 - `gateway-mqtt`

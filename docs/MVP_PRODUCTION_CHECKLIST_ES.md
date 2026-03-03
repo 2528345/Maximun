@@ -25,6 +25,10 @@ cp .env.example .env
 ./ops/deploy_microos.sh --profile lenovo330s_mvp_production
 ```
 
+Nota:
+- Este perfil usa `RAG_EMBED_BACKEND=sentence`, por lo que `rag-core` necesita `sentence-transformers`.
+- Si operarás 100% offline, precarga el modelo `all-MiniLM-L6-v2` antes del despliegue final.
+
 ## Lo que falta para considerarlo MVP producción real
 
 1. Secretos reales y rotación

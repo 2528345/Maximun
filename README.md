@@ -138,6 +138,8 @@ Install as a user service:
 ./ops/apply_runtime_profile.sh lenovo330s_mvp_production
 ```
 
+`lenovo330s_mvp_production` enables semantic RAG embeddings (`sentence-transformers`).
+
 Run consistency check after switching profile:
 
 ```bash
