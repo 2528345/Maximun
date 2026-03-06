@@ -171,6 +171,7 @@ ensure_secure_mqtt_password() {
   local current_password
   local final_password
   local creds_file
+  local role_password_keys
 
   mqtt_username="$(read_env_value "$env_file" "MQTT_USERNAME")"
   current_password="$(read_env_value "$env_file" "MQTT_PASSWORD")"
@@ -188,11 +189,20 @@ ensure_secure_mqtt_password() {
 
   set_env_value "$env_file" "MQTT_PASSWORD" "$final_password"
   set_env_value "$env_file" "MQTT_ENFORCE_STRONG_PASSWORD" "true"
+  set_env_value "$env_file" "MQTT_ENABLE_ACL" "true"
+  set_env_value "$env_file" "MQTT_ENABLE_ADMIN_FALLBACK" "false"
+
+  role_password_keys="MQTT_CORE_PASSWORD MQTT_AUDIO_PASSWORD MQTT_VISION_PASSWORD MQTT_RAG_PASSWORD MQTT_IOT_PASSWORD MQTT_DASHBOARD_PASSWORD MQTT_OPS_PASSWORD"
+  for key in $role_password_keys; do
+    set_env_value "$env_file" "$key" "$final_password"
+  done
 
   creds_file="$TARGET_DIR/.mqtt_credentials.local"
   {
     printf "MQTT_USERNAME=%s\n" "${mqtt_username:-maximun}"
     printf "MQTT_PASSWORD=%s\n" "$final_password"
+    printf "MQTT_OPS_USERNAME=%s\n" "$(read_env_value "$env_file" "MQTT_OPS_USERNAME")"
+    printf "MQTT_OPS_PASSWORD=%s\n" "$final_password"
   } >"$creds_file"
   chmod 600 "$creds_file"
   log "Credenciales MQTT guardadas en $creds_file (permisos 600)."

@@ -108,6 +108,9 @@ nano .env
 3. Ajustar:
 - `MQTT_PASSWORD=<clave fuerte de 16+ caracteres>`
 - `MQTT_ENFORCE_STRONG_PASSWORD=true`
+- (opcional avanzado) usuarios por rol MQTT:
+  - `MQTT_CORE_USERNAME`, `MQTT_AUDIO_USERNAME`, `MQTT_VISION_USERNAME`, `MQTT_RAG_USERNAME`, `MQTT_IOT_USERNAME`, `MQTT_DASHBOARD_USERNAME`, `MQTT_OPS_USERNAME`
+  - por defecto todos usan la misma clave segura que `MQTT_PASSWORD`
 
 4. Validar:
 
@@ -187,8 +190,9 @@ podman compose ps
 
 1. RAG restringe rutas: solo indexa dentro de `RAG_DOCS_PATH`.
 2. Dashboard usa autenticacion MQTT (usuario/clave).
-3. Broker puede bloquear claves debiles con `MQTT_ENFORCE_STRONG_PASSWORD=true`.
-4. Preflight detecta clave MQTT por defecto y falla para evitar despliegue inseguro.
+3. Broker MQTT usa ACL por rol (`MQTT_ENABLE_ACL=true`) para minimo privilegio.
+4. Broker puede bloquear claves debiles con `MQTT_ENFORCE_STRONG_PASSWORD=true`.
+5. Preflight detecta clave MQTT por defecto y falla para evitar despliegue inseguro.
 
 ---
 

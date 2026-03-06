@@ -7,6 +7,10 @@ MQTT_PASS="${MQTT_PASS:-}"
 if [[ -f .env ]]; then
   env_mqtt_user="$(grep '^MQTT_USERNAME=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_pass="$(grep '^MQTT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_ops_user="$(grep '^MQTT_OPS_USERNAME=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_ops_pass="$(grep '^MQTT_OPS_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$env_mqtt_ops_user" ]] && env_mqtt_user="$env_mqtt_ops_user"
+  [[ -n "$env_mqtt_ops_pass" ]] && env_mqtt_pass="$env_mqtt_ops_pass"
   [[ -n "$env_mqtt_user" ]] && MQTT_USER="$env_mqtt_user"
   [[ -n "$env_mqtt_pass" ]] && MQTT_PASS="$env_mqtt_pass"
 fi

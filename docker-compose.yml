@@ -20,6 +20,22 @@ services:
       MQTT_TLS_CERT_FILE: "${MQTT_TLS_CERT_FILE:-/mosquitto/config/certs/server.crt}"
       MQTT_TLS_KEY_FILE: "${MQTT_TLS_KEY_FILE:-/mosquitto/config/certs/server.key}"
       MQTT_ENFORCE_STRONG_PASSWORD: "${MQTT_ENFORCE_STRONG_PASSWORD:-false}"
+      MQTT_ENABLE_ACL: "${MQTT_ENABLE_ACL:-true}"
+      MQTT_ENABLE_ADMIN_FALLBACK: "${MQTT_ENABLE_ADMIN_FALLBACK:-false}"
+      MQTT_CORE_USERNAME: "${MQTT_CORE_USERNAME:-core}"
+      MQTT_CORE_PASSWORD: "${MQTT_CORE_PASSWORD:-maximun_local_change_me}"
+      MQTT_AUDIO_USERNAME: "${MQTT_AUDIO_USERNAME:-audio}"
+      MQTT_AUDIO_PASSWORD: "${MQTT_AUDIO_PASSWORD:-maximun_local_change_me}"
+      MQTT_VISION_USERNAME: "${MQTT_VISION_USERNAME:-vision}"
+      MQTT_VISION_PASSWORD: "${MQTT_VISION_PASSWORD:-maximun_local_change_me}"
+      MQTT_RAG_USERNAME: "${MQTT_RAG_USERNAME:-rag}"
+      MQTT_RAG_PASSWORD: "${MQTT_RAG_PASSWORD:-maximun_local_change_me}"
+      MQTT_IOT_USERNAME: "${MQTT_IOT_USERNAME:-iot}"
+      MQTT_IOT_PASSWORD: "${MQTT_IOT_PASSWORD:-maximun_local_change_me}"
+      MQTT_DASHBOARD_USERNAME: "${MQTT_DASHBOARD_USERNAME:-dashboard}"
+      MQTT_DASHBOARD_PASSWORD: "${MQTT_DASHBOARD_PASSWORD:-maximun_local_change_me}"
+      MQTT_OPS_USERNAME: "${MQTT_OPS_USERNAME:-ops}"
+      MQTT_OPS_PASSWORD: "${MQTT_OPS_PASSWORD:-maximun_local_change_me}"
     ports:
       - "1883:1883"
       - "9001:9001"
@@ -41,8 +57,8 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
-      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_USERNAME: "${MQTT_CORE_USERNAME:-core}"
+      MQTT_PASSWORD: "${MQTT_CORE_PASSWORD:-maximun_local_change_me}"
       MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
       MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
       MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
@@ -104,8 +120,8 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
-      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_USERNAME: "${MQTT_VISION_USERNAME:-vision}"
+      MQTT_PASSWORD: "${MQTT_VISION_PASSWORD:-maximun_local_change_me}"
       MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
       MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
       MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
@@ -145,8 +161,8 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
-      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_USERNAME: "${MQTT_AUDIO_USERNAME:-audio}"
+      MQTT_PASSWORD: "${MQTT_AUDIO_PASSWORD:-maximun_local_change_me}"
       MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
       MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
       MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
@@ -187,8 +203,8 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
-      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_USERNAME: "${MQTT_IOT_USERNAME:-iot}"
+      MQTT_PASSWORD: "${MQTT_IOT_PASSWORD:-maximun_local_change_me}"
       MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
       MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
       MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
@@ -226,8 +242,8 @@ services:
     environment:
       MQTT_HOST: gateway-mqtt
       MQTT_PORT: "1883"
-      MQTT_USERNAME: "${MQTT_USERNAME:-maximun}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD:-maximun_local_change_me}"
+      MQTT_USERNAME: "${MQTT_RAG_USERNAME:-rag}"
+      MQTT_PASSWORD: "${MQTT_RAG_PASSWORD:-maximun_local_change_me}"
       MQTT_TLS_ENABLE: "${MQTT_CLIENT_TLS_ENABLE:-false}"
       MQTT_TLS_CA_CERT: "${MQTT_TLS_CA_CERT:-}"
       MQTT_TLS_CLIENT_CERT: "${MQTT_TLS_CLIENT_CERT:-}"
@@ -267,8 +283,8 @@ services:
       - gateway-mqtt
     environment:
       VITE_MQTT_WS_URL: ws://localhost:9001
-      VITE_MQTT_USERNAME: "${MQTT_USERNAME:-}"
-      VITE_MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
+      VITE_MQTT_USERNAME: "${MQTT_DASHBOARD_USERNAME:-dashboard}"
+      VITE_MQTT_PASSWORD: "${MQTT_DASHBOARD_PASSWORD:-maximun_local_change_me}"
     ports:
       - "5173:5173"
     mem_limit: 300m

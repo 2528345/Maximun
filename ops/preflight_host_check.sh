@@ -17,9 +17,17 @@ MQTT_ALLOW_ANONYMOUS="false"
 MQTT_TLS_ENABLE="false"
 MQTT_ENFORCE_STRONG_PASSWORD="false"
 MQTT_PASSWORD="maximun_local_change_me"
+MQTT_ENABLE_ACL="true"
 MQTT_TLS_CA_FILE="/mosquitto/config/certs/ca.crt"
 MQTT_TLS_CERT_FILE="/mosquitto/config/certs/server.crt"
 MQTT_TLS_KEY_FILE="/mosquitto/config/certs/server.key"
+MQTT_CORE_PASSWORD="maximun_local_change_me"
+MQTT_AUDIO_PASSWORD="maximun_local_change_me"
+MQTT_VISION_PASSWORD="maximun_local_change_me"
+MQTT_RAG_PASSWORD="maximun_local_change_me"
+MQTT_IOT_PASSWORD="maximun_local_change_me"
+MQTT_DASHBOARD_PASSWORD="maximun_local_change_me"
+MQTT_OPS_PASSWORD="maximun_local_change_me"
 IOT_ZIGBEE_SERIAL_PORT="/dev/ttyUSB1"
 IOT_MODBUS_SERIAL_PORT="/dev/ttyUSB2"
 IOT_CAN_CHANNEL="can0"
@@ -33,7 +41,15 @@ if [[ -f .env ]]; then
   env_mqtt_tls_cert="$(grep '^MQTT_TLS_CERT_FILE=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_tls_key="$(grep '^MQTT_TLS_KEY_FILE=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_enforce_strong="$(grep '^MQTT_ENFORCE_STRONG_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_enable_acl="$(grep '^MQTT_ENABLE_ACL=' .env | tail -n1 | cut -d= -f2- || true)"
   env_mqtt_password="$(grep '^MQTT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_core_password="$(grep '^MQTT_CORE_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_audio_password="$(grep '^MQTT_AUDIO_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_vision_password="$(grep '^MQTT_VISION_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_rag_password="$(grep '^MQTT_RAG_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_iot_password="$(grep '^MQTT_IOT_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_dashboard_password="$(grep '^MQTT_DASHBOARD_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
+  env_mqtt_ops_password="$(grep '^MQTT_OPS_PASSWORD=' .env | tail -n1 | cut -d= -f2- || true)"
   env_zigbee_port="$(grep '^IOT_ZIGBEE_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
   env_modbus_port="$(grep '^IOT_MODBUS_SERIAL_PORT=' .env | tail -n1 | cut -d= -f2- || true)"
   env_can_channel="$(grep '^IOT_CAN_CHANNEL=' .env | tail -n1 | cut -d= -f2- || true)"
@@ -44,7 +60,15 @@ if [[ -f .env ]]; then
   [[ -n "$env_mqtt_tls_cert" ]] && MQTT_TLS_CERT_FILE="$env_mqtt_tls_cert"
   [[ -n "$env_mqtt_tls_key" ]] && MQTT_TLS_KEY_FILE="$env_mqtt_tls_key"
   [[ -n "$env_mqtt_enforce_strong" ]] && MQTT_ENFORCE_STRONG_PASSWORD="$env_mqtt_enforce_strong"
+  [[ -n "$env_mqtt_enable_acl" ]] && MQTT_ENABLE_ACL="$env_mqtt_enable_acl"
   [[ -n "$env_mqtt_password" ]] && MQTT_PASSWORD="$env_mqtt_password"
+  [[ -n "$env_mqtt_core_password" ]] && MQTT_CORE_PASSWORD="$env_mqtt_core_password"
+  [[ -n "$env_mqtt_audio_password" ]] && MQTT_AUDIO_PASSWORD="$env_mqtt_audio_password"
+  [[ -n "$env_mqtt_vision_password" ]] && MQTT_VISION_PASSWORD="$env_mqtt_vision_password"
+  [[ -n "$env_mqtt_rag_password" ]] && MQTT_RAG_PASSWORD="$env_mqtt_rag_password"
+  [[ -n "$env_mqtt_iot_password" ]] && MQTT_IOT_PASSWORD="$env_mqtt_iot_password"
+  [[ -n "$env_mqtt_dashboard_password" ]] && MQTT_DASHBOARD_PASSWORD="$env_mqtt_dashboard_password"
+  [[ -n "$env_mqtt_ops_password" ]] && MQTT_OPS_PASSWORD="$env_mqtt_ops_password"
   [[ -n "$env_zigbee_port" ]] && IOT_ZIGBEE_SERIAL_PORT="$env_zigbee_port"
   [[ -n "$env_modbus_port" ]] && IOT_MODBUS_SERIAL_PORT="$env_modbus_port"
   [[ -n "$env_can_channel" ]] && IOT_CAN_CHANNEL="$env_can_channel"
@@ -168,11 +192,51 @@ if [[ "$MQTT_PASSWORD" == "maximun_local_change_me" || "$MQTT_PASSWORD" == "CAMB
   fail "MQTT_PASSWORD en valor por defecto"
 fi
 
+if [[ "${MQTT_ENABLE_ACL,,}" == "true" ]]; then
+  normalize_role_password() {
+    local value="$1"
+    if [[ -z "$value" || "$value" == "maximun_local_change_me" || "$value" == "CAMBIAR_ESTA_CLAVE_SEGURA" ]]; then
+      echo "$MQTT_PASSWORD"
+      return 0
+    fi
+    echo "$value"
+  }
+
+  for role_password in \
+    "$(normalize_role_password "$MQTT_CORE_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_AUDIO_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_VISION_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_RAG_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_IOT_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_DASHBOARD_PASSWORD")" \
+    "$(normalize_role_password "$MQTT_OPS_PASSWORD")"; do
+    if [[ "$role_password" == "maximun_local_change_me" || "$role_password" == "CAMBIAR_ESTA_CLAVE_SEGURA" || -z "$role_password" ]]; then
+      fail "MQTT ACL activa pero hay password de rol en valor por defecto"
+      break
+    fi
+  done
+fi
+
 if [[ "${MQTT_ENFORCE_STRONG_PASSWORD,,}" == "true" ]]; then
   if [[ "${#MQTT_PASSWORD}" -ge 16 ]]; then
     ok "MQTT_PASSWORD cumple longitud minima (>=16)"
   else
     fail "MQTT_ENFORCE_STRONG_PASSWORD=true pero MQTT_PASSWORD tiene menos de 16 caracteres"
+  fi
+  if [[ "${MQTT_ENABLE_ACL,,}" == "true" ]]; then
+    for role_password in \
+      "$(normalize_role_password "$MQTT_CORE_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_AUDIO_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_VISION_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_RAG_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_IOT_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_DASHBOARD_PASSWORD")" \
+      "$(normalize_role_password "$MQTT_OPS_PASSWORD")"; do
+      if [[ "${#role_password}" -lt 16 ]]; then
+        fail "MQTT_ENFORCE_STRONG_PASSWORD=true pero password de rol MQTT tiene menos de 16 caracteres"
+        break
+      fi
+    done
   fi
 fi
 
